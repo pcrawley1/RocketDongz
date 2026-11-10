@@ -1,14 +1,14 @@
-import { sleeper, avatarUrl } from "./sleeper.js?v=20261110130333";
-import { buildTeams, computeAdvanced, sortStandings } from "./stats.js?v=20261110130333";
-import { scoreStats, NON_STARTING } from "./scoring.js?v=20261110130333";
-import { playerNews } from "./news.js?v=20261110130333";
-import { buildNewsletter } from "./newsletter.js?v=20261110130333";
-import { isChugLeague, listChugs, uploadChug, videoUrl } from "./chugs.js?v=20261110130333";
-import { personaFor } from "./personas.js?v=20261110130333";
-import { loadTrades, gradeTrades } from "./trades.js?v=20261110130333";
-import { preseasonFor } from "./preseason.js?v=20261110130333";
-import { seeded } from "./util.js?v=20261110130333";
-import { esc, f1, f2, pct, rec, signed, stripTags, pairs, leagueDisplay } from "./util.js?v=20261110130333";
+import { sleeper, avatarUrl } from "./sleeper.js?v=20261110130843";
+import { buildTeams, computeAdvanced, sortStandings } from "./stats.js?v=20261110130843";
+import { scoreStats, NON_STARTING } from "./scoring.js?v=20261110130843";
+import { playerNews } from "./news.js?v=20261110130843";
+import { buildNewsletter } from "./newsletter.js?v=20261110130843";
+import { isChugLeague, listChugs, uploadChug, videoUrl } from "./chugs.js?v=20261110130843";
+import { personaFor } from "./personas.js?v=20261110130843";
+import { loadTrades, gradeTrades, replacementLevels } from "./trades.js?v=20261110130843";
+import { preseasonFor } from "./preseason.js?v=20261110130843";
+import { seeded } from "./util.js?v=20261110130843";
+import { esc, f1, f2, pct, rec, signed, stripTags, pairs, leagueDisplay } from "./util.js?v=20261110130843";
 
 const DEFAULT_USER = "PierceCrawley";
 const DEFAULT_LEAGUE = "Rocket Dongs"; // what first-time visitors to the bare URL see
@@ -546,52 +546,85 @@ function preseasonData() {
 // ---------- 🤝 trades ----------
 async function tradesView() {
   loading("Reviewing the paperwork…");
-  const [players, trades] = await Promise.all([
+  const season = ctx.league.season;
+  const regEnd = (ctx.league.settings.playoff_week_start || 15) - 1;
+  const futureWeeks = [];
+  for (let w = ctx.lastDone + 1; w <= regEnd; w++) futureWeeks.push(w);
+  const [players, trades, ...projs] = await Promise.all([
     sleeper.players().catch(() => ({})),
     loadTrades(ctx.league.league_id, ctx.maxWeek),
+    ...futureWeeks.map((w) => sleeper.projections(season, w)),
   ]);
   if (tab !== "trades") return;
-  const graded = gradeTrades(trades, ctx.allWeeks, ctx.lastDone, new Map(ctx.teams.map((t) => [t.rosterId, new Set(t.players)])));
+
+  // Rest-of-season projection per traded player (league scoring), plus weekly replacement level by position.
+  const sc = ctx.league.scoring_settings || {};
+  const posOf = (pid) => players[pid]?.pos || (isNaN(pid) ? "DEF" : "");
+  const tradedIds = new Set(trades.flatMap((t) => Object.keys(t.adds || {})));
+  const ros = new Map();
+  for (const pid of tradedIds) {
+    let pts = 0, games = 0;
+    for (const p of projs) {
+      const v = p[pid] ? scoreStats(p[pid].stats, sc) : 0;
+      if (v > 0) { pts += v; games++; }
+    }
+    ros.set(pid, { pts, games });
+  }
+  const replWeek = projs[0] || (await sleeper.projections(season, Math.max(1, ctx.lastDone)));
+  if (tab !== "trades") return;
+  const repl = replacementLevels(
+    Object.entries(replWeek).map(([pid, p]) => [pid, scoreStats(p.stats, sc)]),
+    posOf, ctx.league.roster_positions, ctx.teams.length);
+  const graded = gradeTrades(trades, ctx.allWeeks, ctx.lastDone, {
+    currentRosters: new Map(ctx.teams.map((t) => [t.rosterId, new Set(t.players)])), ros, repl, posOf,
+  });
+
   const byRoster = new Map(ctx.teams.map((t) => [t.rosterId, t]));
   const team = (rid) => byRoster.get(rid) || { team: `Team ${rid}`, owner: "", avatar: null };
   const av = (rid) => { const u = avatarUrl(team(rid).avatar); return u ? `<img class="av" src="${u}" alt="">` : `<span class="av ph"></span>`; };
   const pl = (pid) => players[pid] || { name: pid, pos: "", team: "" };
-  const seasonStart = ctx.league.season === ctx.state.league_season ? Date.parse(ctx.state.season_start_date || "") || 0 : 0;
+  const seasonStart = season === ctx.state.league_season ? Date.parse(ctx.state.season_start_date || "") || 0 : 0;
+  const weeksLeft = futureWeeks.length;
 
   if (!graded.length) {
     ui.main.innerHTML = header() + `<div class="trade-hero"><div class="trade-title">🤝 Trade Tracker</div><p>No trades yet this season. Cowards, all of you.</p></div>`;
     return;
   }
 
-  // Season summary
-  const decided = graded.filter((g) => g.weeksSince >= 2 && g.sides.length >= 2);
-  const heist = [...decided].sort((a, b) => b.margin - a.margin)[0];
+  // Season summary (by value: points so far + projected rest of season)
   const net = new Map();
   for (const g of graded) for (const s of g.sides) {
     const cur = net.get(s.rid) || { n: 0, diff: 0 };
     cur.n++;
-    if (g.weeksSince >= 2) cur.diff += s.diff;
+    if (!g.unscored) cur.diff += s.diff; // FAAB deals count as trades but not toward value
     net.set(s.rid, cur);
   }
   const netArr = [...net.entries()].map(([rid, v]) => ({ rid: Number(rid), ...v }));
   const shark = [...netArr].sort((a, b) => b.diff - a.diff)[0];
   const mark = [...netArr].sort((a, b) => a.diff - b.diff)[0];
   const addict = [...netArr].sort((a, b) => b.n - a.n)[0];
+  const heist = [...graded].filter((g) => g.sides.length >= 2 && !g.unscored).sort((a, b) => b.margin - a.margin)[0];
 
   const verdict = (g) => {
-    if (g.weeksSince < 2) return "Too early to call. Check back in a couple of weeks.";
     if (g.sides.length < 2) return "";
+    if (g.unscored) {
+      const ps = g.sides.find((s) => !s.onlyUnscored), fs = g.sides.find((s) => s.onlyUnscored);
+      const what = fs.faabIn ? `$${fs.faabIn} of FAAB` : "draft capital";
+      return `Player-for-${fs.faabIn ? "FAAB" : "picks"} deal: <b>${esc(team(ps.rid).team)}</b> has gotten ${f1(ps.recvPts)} pts so far (${f1(ps.recvRos)} more projected) for ${what}. Worth it? You decide.`;
+    }
     const W = `<b>${esc(team(g.winner.rid).team)}</b>`, L = `<b>${esc(team(g.loser.rid).team)}</b>`;
+    const early = g.realized < 0.35;
+    const lean = early ? " on paper" : "";
+    const r = g.winner.r;
+    if (r < 0.08 || g.margin < 6) return early ? "Too close to call. Ask again in a few weeks." : "Fair trade. Boring, but fair.";
     const p = personaFor(team(g.loser.rid).owner);
-    if (p?.trade?.length && g.margin >= 15) {
+    if (p?.trade?.length && r >= 0.25 && !early) {
       const line = p.trade[Math.floor(seeded(`trade-${g.t.transaction_id}`)() * p.trade.length)];
       return esc(line).split("{N}").join(`<b>${esc(p.nick)}</b>`).split("{W}").join(W);
     }
-    const r = g.margin / Math.max((g.winner.recvPts + g.winner.sentPts) / 2, 30);
-    if (r < 0.1 || g.margin < 5) return "Fair trade so far. Boring, but fair.";
-    if (r >= 0.6 && g.margin >= 30) return `Daylight robbery. ${W} fleeced ${L} by ${f1(g.margin)} points.`;
-    if (r >= 0.3 && g.margin >= 15) return `${W} is winning this one comfortably, +${f1(g.margin)} pts.`;
-    return `${W} has the edge so far, +${f1(g.margin)} pts. Still time for ${L} to feel better about it.`;
+    if (r >= 0.6 && !early) return `Daylight robbery. ${W} fleeced ${L}, +${f1(g.margin)} in value.`;
+    if (r >= 0.3) return `${W} is winning this one${lean}, +${f1(g.margin)} in value.`;
+    return `${W} has a slight edge${lean} (+${f1(g.margin)}). Plenty of football left.`;
   };
 
   const sideHtml = (g, s) => {
@@ -599,27 +632,30 @@ async function tradesView() {
       const p = pl(r.pid);
       const note = r.flipped ? `<span class="tnote">↪ flipped wk ${r.flipped}</span>` : r.gone ? `<span class="tnote">✂️ dropped</span>` : "";
       return `<li><span class="pname">${esc(p.name)} <span class="dim">${esc(p.pos)}${p.team ? " · " + esc(p.team) : ""}</span>${note}</span>
-        <span class="tp"><b>${f1(r.pts)}</b>${r.started !== r.pts ? `<span class="dim"> · ${f1(r.started)} started</span>` : ""}</span></li>`;
+        <span class="tp"><b>${f1(r.pts)}</b><span class="ros">${r.ros ? `+${f1(r.ros)}` : ""}</span></span></li>`;
     });
-    if (s.faabIn) items.push(`<li><span class="pname">💰 $${s.faabIn} FAAB</span><span class="tp dim">–</span></li>`);
-    for (const pk of s.picksIn) items.push(`<li><span class="pname">🎟️ ${esc(pk.season)} round ${pk.round} pick</span><span class="tp dim">TBD</span></li>`);
+    if (s.faabIn) items.push(`<li><span class="pname">💰 $${s.faabIn} FAAB</span><span class="tp dim">not scored</span></li>`);
+    for (const pk of s.picksIn) items.push(`<li><span class="pname">🎟️ ${esc(pk.season)} round ${pk.round} pick</span><span class="tp dim">not scored</span></li>`);
     if (!items.length) items.push(`<li><span class="pname dim">Nothing. Literally nothing.</span><span class="tp"></span></li>`);
-    const winning = g.winner === s && g.weeksSince >= 2 && g.margin > 0;
+    const winning = !g.unscored && g.winner === s && g.margin >= 6 && s.r >= 0.08;
     return `<div class="trade-side ${winning ? "winning" : ""}">
       <div class="trade-who">${av(s.rid)}<div class="trade-name"><b>${esc(team(s.rid).team)}</b><div class="dim">${esc(team(s.rid).owner)}</div></div>
         <span class="grade-badge g-${s.tier}">${s.grade}</span></div>
-      <div class="trade-got">Got</div>
+      <div class="trade-got"><span>Got</span><span>so far <i>+ rest of season</i></span></div>
       <ul class="trade-list">${items.join("")}</ul>
-      <div class="trade-total"><span>Points for them since</span><b>${f1(s.recvPts)}</b></div>
+      <div class="trade-total"><span>Points <span class="dim">${f1(s.recvPts)} so far · ${f1(s.recvRos)} proj</span></span>${g.unscored ? "" : `<span class="val" title="Points above a waiver-level player at the same position">value <b>${f1(s.value)}</b></span>`}</div>
     </div>`;
   };
 
   const cards = graded.map((g) => {
     const date = new Date(g.t.created).toLocaleDateString([], { month: "short", day: "numeric" });
     const when = seasonStart && g.t.created < seasonStart ? "Preseason" : `Week ${g.leg}`;
+    const pctPlayed = Math.round(g.realized * 100);
     const v = verdict(g);
     return `<article class="trade-card">
-      <div class="trade-head"><span class="chip">${when}</span><span class="dim">${date} · ${g.weeksSince} week${g.weeksSince === 1 ? "" : "s"} of data</span></div>
+      <div class="trade-head"><span class="chip">${when}</span><span class="dim">${date}</span>
+        ${g.realized < 0.35 ? `<span class="chip proj-chip">🔮 Mostly projected</span>` : ""}
+        <span class="played" title="Share of this trade's total value that's already been scored"><span class="played-bar"><span style="width:${pctPlayed}%"></span></span>${pctPlayed}% played out</span></div>
       <div class="trade-sides">${g.sides.map((s) => sideHtml(g, s)).join("")}</div>
       ${v ? `<p class="quip trade-verdict">${v}</p>` : ""}
     </article>`;
@@ -629,14 +665,14 @@ async function tradesView() {
   ui.main.innerHTML = header() + `
     <div class="trade-hero">
       <div class="trade-title">🤝 Trade Tracker</div>
-      <p>${graded.length} trade${graded.length === 1 ? "" : "s"} this season, graded on the points each side's new players have actually scored for them.</p>
+      <p>${graded.length} trade${graded.length === 1 ? "" : "s"} this season. Grades blend what's already happened with what's projected for the last ${weeksLeft} week${weeksLeft === 1 ? "" : "s"} of the regular season, so early trades stay close to the middle until they play out.</p>
       <div class="trade-stats">
-        ${shark && shark.diff > 0 ? stat("🦈 Trade shark", shark.rid, `+${f1(shark.diff)} pts net`) : ""}
-        ${mark && mark.diff < 0 ? stat("🎣 Easiest mark", mark.rid, `${f1(mark.diff)} pts net`) : ""}
-        ${heist ? stat("🏴‍☠️ Biggest heist", heist.winner.rid, `+${f1(heist.margin)} vs ${esc(team(heist.loser.rid).team)}`) : ""}
+        ${shark && shark.diff > 0 ? stat("🦈 Trade shark", shark.rid, `+${f1(shark.diff)} value`) : ""}
+        ${mark && mark.diff < 0 ? stat("🎣 Easiest mark", mark.rid, `${f1(mark.diff)} value`) : ""}
+        ${heist && heist.margin > 0 ? stat("🏴‍☠️ Biggest heist", heist.winner.rid, `+${f1(heist.margin)} vs ${esc(team(heist.loser.rid).team)}`) : ""}
         ${addict && addict.n > 1 ? stat("📞 Trade addict", addict.rid, `${addict.n} trades`) : ""}
       </div>
     </div>
     <div class="trade-grid">${cards}</div>
-    <p class="note">Points count from the week of the trade through week ${ctx.lastDone}, only while the player was on the receiving team (bench points included; "started" shows what actually counted in lineups). FAAB and draft picks are listed but not scored. Trades under 2 weeks old aren't graded yet.</p>`;
+    <p class="note"><b>How grades work:</b> an even trade is a B; A+ and F are only for lopsided deals. Each player's <b>value</b> is points above a waiver-level player at his position (so a QB's big raw totals don't automatically win), counting points already scored for the receiving team since the trade (bench included, byes not penalized) plus Sleeper's projection for weeks ${ctx.lastDone + 1}–${regEnd} in your league's scoring if he's still on the roster. "% played out" shows how much of a trade's value is real points vs projection. Player-for-FAAB deals get 💰 instead of a grade.</p>`;
 }

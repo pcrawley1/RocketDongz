@@ -377,3 +377,18 @@ th.zev-col { color: var(--purple); }
 .trade-total b { font-size: 20px; color: var(--ink); }
 .trade-verdict { margin-top: 12px !important; font-size: 15px !important; }
 .tnote { margin-left: 6px; font-size: 11px; font-weight: 600; color: var(--orange); }
+
+/* trades v2: value grading */
+.trade-head { flex-wrap: wrap; }
+.proj-chip { background: color-mix(in srgb, var(--purple) 16%, transparent); color: var(--purple); }
+.played { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; font-size: 12px; color: var(--dim); font-weight: 600; }
+.played-bar { width: 80px; height: 6px; border-radius: 999px; background: var(--fill); overflow: hidden; display: inline-block; }
+.played-bar span { display: block; height: 100%; background: var(--blue); }
+.trade-got { display: flex; justify-content: space-between; }
+.trade-got i { font-style: normal; color: var(--purple); }
+.ros { color: var(--purple); font-size: 12px; margin-left: 6px; font-weight: 600; min-width: 40px; display: inline-block; text-align: right; }
+.g-b { background: var(--blue); }
+
+.g-faab { background: color-mix(in srgb, var(--yellow) 30%, transparent); font-size: 24px; }
+.trade-total .val { color: var(--ink2); font-size: 13px; }
+.trade-total .val b { font-size: 20px; margin-left: 4px; }
