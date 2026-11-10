@@ -1,14 +1,14 @@
-import { sleeper, avatarUrl } from "./sleeper.js?v=20261110130843";
-import { buildTeams, computeAdvanced, sortStandings } from "./stats.js?v=20261110130843";
-import { scoreStats, NON_STARTING } from "./scoring.js?v=20261110130843";
-import { playerNews } from "./news.js?v=20261110130843";
-import { buildNewsletter } from "./newsletter.js?v=20261110130843";
-import { isChugLeague, listChugs, uploadChug, videoUrl } from "./chugs.js?v=20261110130843";
-import { personaFor } from "./personas.js?v=20261110130843";
-import { loadTrades, gradeTrades, replacementLevels } from "./trades.js?v=20261110130843";
-import { preseasonFor } from "./preseason.js?v=20261110130843";
-import { seeded } from "./util.js?v=20261110130843";
-import { esc, f1, f2, pct, rec, signed, stripTags, pairs, leagueDisplay } from "./util.js?v=20261110130843";
+import { sleeper, avatarUrl } from "./sleeper.js?v=20261110131211";
+import { buildTeams, computeAdvanced, sortStandings } from "./stats.js?v=20261110131211";
+import { scoreStats, NON_STARTING } from "./scoring.js?v=20261110131211";
+import { playerNews } from "./news.js?v=20261110131211";
+import { buildNewsletter } from "./newsletter.js?v=20261110131211";
+import { isChugLeague, listChugs, uploadChug, videoUrl } from "./chugs.js?v=20261110131211";
+import { personaFor } from "./personas.js?v=20261110131211";
+import { loadTrades, gradeTrades, replacementLevels } from "./trades.js?v=20261110131211";
+import { preseasonFor } from "./preseason.js?v=20261110131211";
+import { seeded } from "./util.js?v=20261110131211";
+import { esc, f1, f2, pct, rec, signed, stripTags, pairs, leagueDisplay } from "./util.js?v=20261110131211";
 
 const DEFAULT_USER = "PierceCrawley";
 const DEFAULT_LEAGUE = "Rocket Dongs"; // what first-time visitors to the bare URL see
@@ -81,7 +81,11 @@ function syncUrl() {
   if (!ctx?.league) return;
   const q = new URLSearchParams({ league: ctx.league.league_id, tab });
   if (!ui.week.hidden && ui.week.value) q.set("week", ui.week.value);
-  history.replaceState(null, "", `${location.pathname}?${q}`);
+  // Keep the path in sync with the league so shared links get the right preview card:
+  // Studs and Spuds → /spuds/ (potato card), everything else → the main page.
+  const root = new URL(document.baseURI).pathname.replace(/[^/]*$/, ""); // site root, even on /spuds/ pages
+  const path = /spud/i.test(ctx.league.name) ? `${root}spuds/` : root;
+  history.replaceState(null, "", `${path}?${q}`);
 }
 
 function setStatus(msg, isError = false) {
