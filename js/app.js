@@ -1,13 +1,13 @@
-import { sleeper, avatarUrl } from "./sleeper.js";
-import { buildTeams, computeAdvanced, sortStandings } from "./stats.js";
-import { scoreStats, NON_STARTING } from "./scoring.js";
-import { playerNews } from "./news.js";
-import { buildNewsletter } from "./newsletter.js";
-import { isChugLeague, listChugs, uploadChug, videoUrl } from "./chugs.js";
-import { personaFor } from "./personas.js";
-import { preseasonFor } from "./preseason.js";
-import { seeded } from "./util.js";
-import { esc, f1, f2, pct, rec, signed, stripTags, pairs, leagueDisplay } from "./util.js";
+import { sleeper, avatarUrl } from "./sleeper.js?v=20261110123057";
+import { buildTeams, computeAdvanced, sortStandings } from "./stats.js?v=20261110123057";
+import { scoreStats, NON_STARTING } from "./scoring.js?v=20261110123057";
+import { playerNews } from "./news.js?v=20261110123057";
+import { buildNewsletter } from "./newsletter.js?v=20261110123057";
+import { isChugLeague, listChugs, uploadChug, videoUrl } from "./chugs.js?v=20261110123057";
+import { personaFor } from "./personas.js?v=20261110123057";
+import { preseasonFor } from "./preseason.js?v=20261110123057";
+import { seeded } from "./util.js?v=20261110123057";
+import { esc, f1, f2, pct, rec, signed, stripTags, pairs, leagueDisplay } from "./util.js?v=20261110123057";
 
 const DEFAULT_USER = "PierceCrawley";
 const DEFAULT_LEAGUE = "Rocket Dongs"; // what first-time visitors to the bare URL see

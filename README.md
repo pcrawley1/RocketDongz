@@ -17,3 +17,6 @@ Switch the username, season, or league in the header. Your choices are saved in 
 - `js/sleeper.js`: API client (in-memory cache; the 5MB player DB is cached in IndexedDB for 24h)
 - `js/stats.js`: pure league math (all-play, luck, power)
 - `js/app.js`: UI and rendering
+
+## Deploying
+Run `python3 stamp.py` before committing. It version-stamps every JS/CSS reference so browsers never mix cached old files with new ones after a deploy.
