@@ -110,7 +110,7 @@ const T = {
   ],
   gotw: [
     "This is the one. {A} vs {B}, projected {pa}-{pb}. Clear your Sunday.",
-    "Game of the Week: {A} vs {B}. Projected within {sp}. Somebody's going to be insufferable Monday.",
+    "{A} vs {B}. Projected within {sp}. Somebody's going to be insufferable Monday.",
   ],
 };
 
@@ -228,8 +228,8 @@ export function buildNewsletter(d) {
 
   // --- awards
   const awards = [];
-  awards.push({ icon: "🚀", title: "Rocket of the Week", body: fill(pick(T.rocket, seed + "r"), { T: B(name(topRow.roster_id)), s: f2(topRow.points) }) });
-  awards.push({ icon: "🗑️", title: "Dong of the Week", cls: "shame", body: fill(pick(T.dong, seed + "d"), { T: B(name(lowRow.roster_id)), s: f2(lowRow.points) }) });
+  awards.push({ icon: "🚀", title: "Rocket of the Week", color: "orange", body: fill(pick(T.rocket, seed + "r"), { T: B(name(topRow.roster_id)), s: f2(topRow.points) }) });
+  awards.push({ icon: "🗑️", title: "Dong of the Week", color: "red", cls: "shame", body: fill(pick(T.dong, seed + "d"), { T: B(name(lowRow.roster_id)), s: f2(lowRow.points) }) });
 
   const benchBoss = [...fact.values()].sort((a, b) => b.left - a.left)[0];
   if (benchBoss && benchBoss.left >= 8) {
@@ -237,7 +237,7 @@ export function buildNewsletter(d) {
     const res = results.find((x) => x.w.roster_id === rid || x.l.roster_id === rid);
     const lost = res && res.l.roster_id === rid;
     const flips = lost && benchBoss.opt > res.w.points;
-    awards.push({ icon: "🪑", title: "Bench Blunder", cls: "shame", body: fill(pick(T.bench, seed + "b"), {
+    awards.push({ icon: "🪑", title: "Bench Blunder", color: "purple", cls: "shame", body: fill(pick(T.bench, seed + "b"), {
       T: B(name(rid)), O: esc(owner(rid)), b: f1(benchBoss.left), opt: f2(benchBoss.opt),
       flip: flips ? pick(T.flip, seed + "f") : "",
     }) });
@@ -247,17 +247,17 @@ export function buildNewsletter(d) {
   if (allStarters.length) {
     const boom = [...allStarters].sort((a, b) => (b.pts - b.proj) - (a.pts - a.proj))[0];
     const bust = [...allStarters].filter((s) => s.proj >= 8).sort((a, b) => (b.proj - b.pts) - (a.proj - a.pts))[0];
-    awards.push({ icon: "💥", title: "Boom", body: `${B(pname(boom.id))} put up <b>${f1(boom.pts)}</b> on a ${f1(boom.proj)}-point projection for ${B(name(boom.rid))}. Whoever starts guys like this is either a genius or lucky. (Lucky.)` });
-    if (bust) awards.push({ icon: "🧊", title: "Bust", cls: "shame", body: `${B(pname(bust.id))} was projected for ${f1(bust.proj)} and delivered <b>${f1(bust.pts)}</b>. ${B(name(bust.rid))} would like a refund.` });
+    awards.push({ icon: "💥", title: "Boom", color: "green", body: `${B(pname(boom.id))} put up <b>${f1(boom.pts)}</b> on a ${f1(boom.proj)}-point projection for ${B(name(boom.rid))}. Whoever starts guys like this is either a genius or lucky. (Lucky.)` });
+    if (bust) awards.push({ icon: "🧊", title: "Bust", color: "teal", cls: "shame", body: `${B(pname(bust.id))} was projected for ${f1(bust.proj)} and delivered <b>${f1(bust.pts)}</b>. ${B(name(bust.rid))} would like a refund.` });
   }
 
   const unlucky = results.filter((x) => x.l.points > median).sort((a, b) => b.l.points - a.l.points)[0];
   if (unlucky) {
     const beaten = rows.filter((r) => r.points < unlucky.l.points).length;
-    awards.push({ icon: "🥲", title: "Unluckiest Loss", body: `${B(name(unlucky.l.roster_id))} scored ${f2(unlucky.l.points)}, enough to beat ${beaten} of ${rows.length - 1} teams, and still took an L. Cosmic injustice.` });
+    awards.push({ icon: "🥲", title: "Unluckiest Loss", color: "indigo", body: `${B(name(unlucky.l.roster_id))} scored ${f2(unlucky.l.points)}, enough to beat ${beaten} of ${rows.length - 1} teams, and still took an L. Cosmic injustice.` });
   }
   const lucky = results.filter((x) => x.w.points < median).sort((a, b) => a.w.points - b.w.points)[0];
-  if (lucky) awards.push({ icon: "🍀", title: "Luckiest Win", body: `${B(name(lucky.w.roster_id))} won with ${f2(lucky.w.points)}, below the league median. Buy a lottery ticket.` });
+  if (lucky) awards.push({ icon: "🍀", title: "Luckiest Win", color: "mint", body: `${B(name(lucky.w.roster_id))} won with ${f2(lucky.w.points)}, below the league median. Buy a lottery ticket.` });
 
   // --- standings & roasts (as of week W)
   const now = teamsThrough(d.teams, allWeeks, W).sort(standSort);
@@ -281,8 +281,9 @@ export function buildNewsletter(d) {
   const standingsHtml = now.map((t, i) => {
     const pr = powerNow.indexOf(t.rosterId) + 1;
     const move = powerPrev ? powerPrev.indexOf(t.rosterId) + 1 - pr : 0;
+    const zone = i === now.length - 1 ? "last" : i < playoffTeams ? "in" : "out";
     return `<tr class="${i === playoffTeams - 1 ? "cutline" : ""}">
-      <td class="rank">${i + 1}</td>
+      <td class="rank"><span class="rank-badge ${zone}">${i + 1}</span></td>
       <td class="l"><b>${esc(t.team)}</b> <span class="dim">${rec(t.wins, t.losses, t.ties)} · ${esc(t.streak)}</span><div class="roast">${roast(t, i)}</div></td>
       <td>${pr}${move ? ` <span class="${move > 0 ? "pos" : "neg"}">${move > 0 ? "▲" : "▼"}${Math.abs(move)}</span>` : ""}</td>
     </tr>`;
@@ -341,7 +342,7 @@ export function buildNewsletter(d) {
     <h1 class="headline">${headline}</h1>
     <section class="nl-section"><h3>Week ${W} Recap</h3>${recapHtml}</section>
     <section class="nl-section"><h3>Awards Ceremony</h3><div class="awards">
-      ${awards.map((a) => `<div class="award ${a.cls || ""}"><div class="award-title">${a.icon} ${a.title}</div><p>${a.body}</p></div>`).join("")}
+      ${awards.map((a) => `<div class="award ${a.cls || ""}" style="--c: var(--${a.color || "blue"})"><div class="award-title"><span class="icon-tile">${a.icon}</span>${a.title}</div><p>${a.body}</p></div>`).join("")}
     </div></section>
     <section class="nl-section"><h3>State of the League</h3>
       <table class="nl-standings"><thead><tr><th>#</th><th class="l">Team &amp; Commentary</th><th>Power</th></tr></thead><tbody>${standingsHtml}</tbody></table>
