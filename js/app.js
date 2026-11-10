@@ -154,11 +154,7 @@ function render() {
   const chugOk = isChugLeague(ctx?.league);
   chugTab.hidden = !chugOk;
   if (tab === "chugs" && ctx?.league && !chugOk) tab = "newsletter";
-  const pre = preseasonFor(ctx?.league);
-  const preTab = document.querySelector('.tab[data-tab="preseason"]');
-  preTab.hidden = !pre;
-  if (pre) preTab.textContent = `🔮 ${pre.by}'s Rankings`;
-  if (tab === "preseason" && ctx?.league && !pre) tab = "newsletter";
+  if (tab === "preseason") tab = "power"; // merged into Power rankings
   ui.tabs.forEach((b) => b.setAttribute("aria-selected", b.dataset.tab === tab));
   const weekTabs = { matchups: ctx?.maxWeek, newsletter: ctx?.lastDone };
   ui.week.hidden = !(tab in weekTabs);
@@ -170,7 +166,7 @@ function render() {
     ui.week.value = String(Math.min(weekFor[tab] || max, max));
   }
   syncUrl();
-  const views = { newsletter, standings, power, matchups, scores, chugs: chugsView, preseason: preseasonView };
+  const views = { newsletter, standings, power, matchups, scores, chugs: chugsView };
   (views[tab] || standings)();
 }
 
@@ -238,24 +234,32 @@ function standings() {
   <p class="note">Dashed line = playoff cut (${playoffTeams} teams). Luck = actual wins − expected wins, where expected wins come from your all-play win %.</p>`;
 }
 
-// ---------- power ----------
+// ---------- power (+ preseason comparison when a league has one) ----------
 function power() {
   const rows = [...ctx.teams].sort((a, b) => b.power - a.power);
   const standRank = new Map(sortStandings(ctx.teams).map((t, i) => [t.rosterId, i + 1]));
   const max = Math.max(...rows.map((r) => r.power));
-  ui.main.innerHTML = header() + `
-  <div class="card"><table>
-    <thead><tr><th>#</th><th class="l">Team</th><th class="l bar-col">Power score</th><th>vs standings</th><th>All-play</th><th>PPG</th><th>Last 3</th></tr></thead>
+  const z = preseasonData();
+  const by = z ? esc(z.pre.by) : "";
+  ui.main.innerHTML = header() + (z ? z.banner : "") + `
+  <div class="card scroll"><table>
+    <thead><tr><th>#</th><th class="l">Team</th><th class="l bar-col">Power score</th><th>vs standings</th><th>All-play</th><th>PPG</th><th>Last 3</th>
+      ${z ? `<th class="zev-col">${by} had them</th><th class="zev-col">vs ${by}</th>` : ""}</tr></thead>
     <tbody>${rows.map((t, i) => {
       const diff = standRank.get(t.rosterId) - (i + 1);
+      const zr = z?.byRoster.get(t.rosterId);
       return `<tr>
         <td class="rank">${i + 1}</td><td class="l">${teamCell(t)}</td>
         <td class="l bar-col"><div class="bar"><span style="width:${(t.power / max) * 100}%"></span><em>${f1(t.power)}</em></div></td>
         <td class="${diff > 0 ? "pos" : diff < 0 ? "neg" : "dim"}">${diff ? (diff > 0 ? "▲" : "▼") + Math.abs(diff) : "—"}</td>
         <td>${pct(t.apPct)}</td><td>${f1(t.ppg)}</td><td>${pct(t.form)}</td>
+        ${z ? (zr ? `<td class="zev-col"><span class="zev-pick">#${zr.pre}</span></td>
+          <td class="zev-col ${zr.delta > 0 ? "pos" : zr.delta < 0 ? "neg" : "dim"}">${zr.delta ? (zr.delta > 0 ? "▲" : "▼") + Math.abs(zr.delta) : "✓ nailed"}</td>`
+          : `<td class="zev-col dim">–</td><td class="zev-col"></td>`) : ""}
       </tr>`;
     }).join("")}</tbody></table></div>
-  <p class="note">Power = 50% all-play win % + 30% points per game (scaled within the league) + 20% weekly finish over the last 3 weeks. ▲ means ranked higher by power than by record.</p>`;
+  <p class="note">Power = 50% all-play win % + 30% points per game (scaled within the league) + 20% weekly finish over the last 3 weeks. "vs standings" ▲ = ranked higher by power than by record.${z ? ` "vs ${by}" ▲ = doing better than ${by} predicted.` : ""}</p>
+  ${z ? z.chart : ""}`;
 }
 
 // ---------- matchups ----------
@@ -461,28 +465,29 @@ function chugTaunt(t, week) {
   return "🍺 " + esc(line).replace(/\{N\}/g, `<b>${esc(p.nick)}</b>`);
 }
 
-// ---------- 🔮 preseason rankings vs reality ----------
-function preseasonView() {
+// ---------- 🔮 preseason rankings vs reality (rendered inside Power rankings) ----------
+function preseasonData() {
   const pre = preseasonFor(ctx.league);
+  if (!pre) return null;
   const byOwner = new Map(ctx.teams.map((t) => [t.owner.toLowerCase(), t]));
   const powerOrder = [...ctx.teams].sort((a, b) => b.power - a.power);
-  const standOrder = sortStandings(ctx.teams);
   const rows = pre.ranks.map((r, i) => {
     const t = byOwner.get(r.owner.toLowerCase());
     if (!t) return null;
     const now = powerOrder.indexOf(t) + 1;
-    return { ...r, t, pre: i + 1, now, stand: standOrder.indexOf(t) + 1, delta: i + 1 - now };
+    return { ...r, t, pre: i + 1, now, delta: i + 1 - now };
   }).filter(Boolean);
   const n = rows.length;
-  if (!n) { ui.main.innerHTML = header() + `<p class="empty">Couldn't match any teams to ${esc(pre.by)}'s list.</p>`; return; }
+  if (!n) return null;
+  const by = esc(pre.by);
 
   const avgMiss = rows.reduce((s, r) => s + Math.abs(r.delta), 0) / n;
   const rho = 1 - (6 * rows.reduce((s, r) => s + r.delta ** 2, 0)) / (n * (n * n - 1));
   const [grade, gradeLine] =
-    avgMiss <= 1.5 ? ["A", `${pre.by} might actually know ball. Disgusting.`] :
-    avgMiss <= 2.5 ? ["B", `Respectable. Don't tell ${pre.by}, he'll be insufferable.`] :
+    avgMiss <= 1.5 ? ["A", `${by} might actually know ball. Disgusting.`] :
+    avgMiss <= 2.5 ? ["B", `Respectable. Don't tell ${by}, he'll be insufferable.`] :
     avgMiss <= 3.5 ? ["C", "Coin-flip accuracy, delivered with total confidence."] :
-    avgMiss <= 4.5 ? ["D", `${pre.by} should keep his day job.`] :
+    avgMiss <= 4.5 ? ["D", `${by} should keep his day job.`] :
                      ["F", "A blindfolded raccoon would've done better."];
   const best = [...rows].sort((a, b) => Math.abs(a.delta) - Math.abs(b.delta) || a.pre - b.pre)[0];
   const over = [...rows].sort((a, b) => a.delta - b.delta)[0];
@@ -494,50 +499,43 @@ function preseasonView() {
     self.now <= Math.ceil(n / 2) ? `Ranked himself #${self.pre}. Reality says #${self.now}. Confidence is free.` :
     `Ranked himself #${self.pre}. He's #${self.now}. Delusion is a hell of a drug.`;
 
+  const callout = (icon, title, color, r, text) => `<div class="award" style="--c: var(--${color})">
+    <div class="award-title"><span class="icon-tile">${icon}</span>${title}</div>
+    <div class="award-stat"><b>${esc(r.name)}</b><span>#${r.pre} → #${r.now}</span></div>
+    <p class="quip">${text}</p></div>`;
+
+  const banner = `
+    <div class="pre-hero">
+      <div><div class="pre-title">🔮 Power Rankings vs ${by}'s Preseason Picks</div>
+        <p>${by} ranked everyone before the ${pre.season} season. Here's how that's aging through week ${ctx.lastDone}. <i>${gradeLine}</i></p></div>
+      <div class="grade"><b>${grade}</b><span>avg miss ${avgMiss.toFixed(1)} spots</span></div>
+    </div>
+    <div class="awards pre-callouts">
+      ${self ? callout("🪞", `${by} on ${by}`, "pink", self, selfLine) : ""}
+      ${callout("🎯", "Best call", "green", best, best.delta === 0 ? "Nailed it exactly. Even a broken clock…" : `Only ${Math.abs(best.delta)} spot${Math.abs(best.delta) > 1 ? "s" : ""} off.`)}
+      ${over.delta < 0 ? callout("🤡", "Most overrated", "red", over, `${Math.abs(over.delta)} spots worse than advertised.`) : ""}
+      ${slept.delta > 0 ? callout("😴", "Slept on", "indigo", slept, `${slept.delta} spots better than ${by} thought.`) : ""}
+    </div>`;
+
   // Slope chart: preseason rank (left) → current power rank (right).
   const rowH = 34, top = 34, W = 420, xl = 128, xr = 292, H = top + n * rowH;
   const y = (rank) => top + (rank - 0.5) * rowH;
-  const isSelf = (r) => self && r === self;
   const lines = rows.map((r) => {
     const cls = r.delta > 0 ? "up" : r.delta < 0 ? "down" : "flat";
-    return `<g class="slope ${cls} ${isSelf(r) ? "self" : ""}">
+    return `<g class="slope ${cls} ${r === self ? "self" : ""}">
       <line x1="${xl + 8}" y1="${y(r.pre)}" x2="${xr - 8}" y2="${y(r.now)}"/>
       <circle cx="${xl + 8}" cy="${y(r.pre)}" r="4"/><circle cx="${xr - 8}" cy="${y(r.now)}" r="4"/>
       <text x="${xl - 4}" y="${y(r.pre) + 5}" text-anchor="end"><tspan class="rk">${r.pre}</tspan>  ${esc(r.name)}</text>
       <text x="${xr + 4}" y="${y(r.now) + 5}">${esc(r.name)}  <tspan class="rk">${r.now}</tspan></text>
     </g>`;
   }).join("");
-  const svg = `<svg class="slope-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(pre.by)}'s preseason ranks compared with current power ranks">
-    <text class="col-title" x="${xl - 4}" y="16" text-anchor="end">${esc(pre.by.toUpperCase())}'S PRESEASON</text>
-    <text class="col-title" x="${xr + 4}" y="16">POWER RANK NOW</text>
-    ${lines}</svg>`;
+  const chart = `
+    <h3 class="section-h">${by}'s picks vs reality</h3>
+    <div class="card slope-card"><svg class="slope-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${by}'s preseason ranks compared with current power ranks">
+      <text class="col-title" x="${xl - 4}" y="16" text-anchor="end">${by.toUpperCase()}'S PRESEASON</text>
+      <text class="col-title" x="${xr + 4}" y="16">POWER RANK NOW</text>
+      ${lines}</svg></div>
+    <p class="note">Green = beating ${by}'s prediction, red = falling short, bold pink = ${by} himself. Spearman correlation: ${rho.toFixed(2)} (1 = perfect, 0 = random${rho < 0 ? `, negative = ${by} would have done better ranking it upside down` : ""}).</p>`;
 
-  const callout = (icon, title, color, r, text) => `<div class="award" style="--c: var(--${color})">
-    <div class="award-title"><span class="icon-tile">${icon}</span>${title}</div>
-    <div class="award-stat"><b>${esc(r.name)}</b><span>#${r.pre} → #${r.now}</span></div>
-    <p class="quip">${text}</p></div>`;
-
-  ui.main.innerHTML = header() + `
-    <div class="pre-hero">
-      <div><div class="pre-title">🔮 ${esc(pre.by)}'s Preseason Rankings</div>
-        <p>How ${esc(pre.by)}'s ${pre.season} preseason rankings are holding up against the power rankings through week ${ctx.lastDone}.</p></div>
-      <div class="grade"><b>${grade}</b><span>avg miss ${avgMiss.toFixed(1)} spots</span></div>
-    </div>
-    <p class="grade-line">${gradeLine}</p>
-    <div class="awards pre-callouts">
-      ${self ? callout("🪞", `${esc(pre.by)} on ${esc(pre.by)}`, "pink", self, selfLine) : ""}
-      ${callout("🎯", "Best call", "green", best, best.delta === 0 ? "Nailed it exactly. Even a broken clock…" : `Only ${Math.abs(best.delta)} spot${Math.abs(best.delta) > 1 ? "s" : ""} off.`)}
-      ${over.delta < 0 ? callout("🤡", "Most overrated", "red", over, `${Math.abs(over.delta)} spots worse than advertised.`) : ""}
-      ${slept.delta > 0 ? callout("😴", "Slept on", "indigo", slept, `${slept.delta} spots better than ${esc(pre.by)} thought.`) : ""}
-    </div>
-    <div class="card slope-card">${svg}</div>
-    <div class="card" style="margin-top:12px"><table>
-      <thead><tr><th>Pre</th><th class="l">Team</th><th>Power</th><th>Standings</th><th>Record</th><th>Δ</th></tr></thead>
-      <tbody>${rows.map((r) => `<tr>
-        <td class="rank">${r.pre}</td>
-        <td class="l">${teamCell(r.t)}</td>
-        <td><b>${r.now}</b></td><td>${r.stand}</td><td>${rec(r.t.wins, r.t.losses, r.t.ties)}</td>
-        <td class="${r.delta > 0 ? "pos" : r.delta < 0 ? "neg" : "dim"}">${r.delta ? (r.delta > 0 ? "▲" : "▼") + Math.abs(r.delta) : "✓"}</td>
-      </tr>`).join("")}</tbody></table></div>
-    <p class="note">Power rank = 50% all-play record, 30% points per game, 20% last 3 weeks. ▲ = better than ${esc(pre.by)} predicted. Spearman correlation: ${rho.toFixed(2)} (1 = perfect, 0 = random${rho < 0 ? `, negative = ${esc(pre.by)} would have done better ranking it upside down` : ""}).</p>`;
+  return { pre, banner, chart, byRoster: new Map(rows.map((r) => [r.t.rosterId, r])) };
 }

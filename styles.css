@@ -340,3 +340,8 @@ tr:has(.team.mine) td { background: var(--mine); }
 .slope.flat line { stroke: var(--dim); } .slope.flat circle { fill: var(--dim); }
 .slope.self line { stroke-width: 5; opacity: 1; }
 .slope.self text { fill: var(--pink); font-weight: 800; }
+.pre-callouts { margin: 12px 0 14px; }
+.zev-col { background: color-mix(in srgb, var(--purple) 7%, transparent); }
+th.zev-col { color: var(--purple); }
+.zev-pick { font-weight: 700; color: var(--purple); }
+.section-h { font-size: 22px; font-weight: 700; letter-spacing: -0.4px; margin: 26px 4px 10px; }
