@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RocketDongz Dashboard</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="top">
+    <h1>🚀 RocketDongz</h1>
+    <form id="user-form" class="controls">
+      <input id="username" placeholder="Sleeper username" autocomplete="off" aria-label="Sleeper username">
+      <select id="season" aria-label="Season"></select>
+      <select id="league" aria-label="League"></select>
+      <button type="submit">Load</button>
+    </form>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab" data-tab="newsletter">📰 Newsletter</button>
+    <button class="tab" data-tab="standings">Standings</button>
+    <button class="tab" data-tab="power">Power rankings</button>
+    <button class="tab" data-tab="matchups">Matchups</button>
+    <button class="tab" data-tab="scores">Weekly scores</button>
+    <select id="week" aria-label="Week" hidden></select>
+    <button id="share" class="share" type="button">🔗 Share link</button>
+  </nav>
+
+  <p id="status" role="status"></p>
+  <main id="main"></main>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
