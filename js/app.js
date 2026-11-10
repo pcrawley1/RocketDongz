@@ -1,14 +1,14 @@
-import { sleeper, avatarUrl } from "./sleeper.js?v=20261110132345";
-import { buildTeams, computeAdvanced, sortStandings } from "./stats.js?v=20261110132345";
-import { scoreStats, NON_STARTING } from "./scoring.js?v=20261110132345";
-import { playerNews } from "./news.js?v=20261110132345";
-import { buildNewsletter } from "./newsletter.js?v=20261110132345";
-import { isChugLeague, listChugs, uploadChug, videoUrl, INTEGRITY_START_WEEK } from "./chugs.js?v=20261110132345";
-import { personaFor } from "./personas.js?v=20261110132345";
-import { loadTrades, gradeTrades, replacementLevels } from "./trades.js?v=20261110132345";
-import { preseasonFor } from "./preseason.js?v=20261110132345";
-import { seeded } from "./util.js?v=20261110132345";
-import { esc, f1, f2, pct, rec, signed, stripTags, pairs, leagueDisplay } from "./util.js?v=20261110132345";
+import { sleeper, avatarUrl } from "./sleeper.js?v=20261110132801";
+import { buildTeams, computeAdvanced, sortStandings } from "./stats.js?v=20261110132801";
+import { scoreStats, NON_STARTING } from "./scoring.js?v=20261110132801";
+import { playerNews } from "./news.js?v=20261110132801";
+import { buildNewsletter } from "./newsletter.js?v=20261110132801";
+import { isChugLeague, listChugs, uploadChug, videoUrl, INTEGRITY_START_WEEK } from "./chugs.js?v=20261110132801";
+import { personaFor } from "./personas.js?v=20261110132801";
+import { loadTrades, gradeTrades, replacementLevels } from "./trades.js?v=20261110132801";
+import { preseasonFor } from "./preseason.js?v=20261110132801";
+import { seeded } from "./util.js?v=20261110132801";
+import { esc, f1, f2, pct, rec, signed, stripTags, pairs, leagueDisplay } from "./util.js?v=20261110132801";
 
 const DEFAULT_USER = "PierceCrawley";
 const DEFAULT_LEAGUE = "Rocket Dongs"; // what first-time visitors to the bare URL see
@@ -417,7 +417,8 @@ async function chugsView() {
     const judged = r.completed + r.overdue;
     const pct = judged ? r.completed / judged : 1;
     const label = !r.owed ? (r.lasts ? "Honor system" : "Untested") : !judged ? "On the clock" : pct === 1 ? "Man of his word" : pct >= 0.75 ? "Mostly honorable" : pct >= 0.5 ? "Shaky" : pct > 0 ? "No integrity" : "Coward";
-    const tier = !judged ? "na" : pct >= 0.8 ? "good" : pct >= 0.5 ? "meh" : "bad";
+    // Never failed a chug (including never been last) = 100% integrity.
+    const tier = pct >= 0.8 ? "good" : pct >= 0.5 ? "meh" : "bad";
     return { ...r, judged, pct, label, tier };
   };
   const integrityBar = (rid, compact = false) => {
@@ -425,7 +426,7 @@ async function chugsView() {
     return `<div class="integrity ${compact ? "compact" : ""} int-${i.tier}" title="${i.completed} of ${i.judged} chugs completed${i.due ? `, ${i.due} due now` : ""}">
       <span class="int-label">Integrity</span>
       <span class="int-bar"><span style="width:${Math.round(i.pct * 100)}%"></span></span>
-      <span class="int-pct">${i.judged ? Math.round(i.pct * 100) + "%" : "—"}</span>
+      <span class="int-pct">${Math.round(i.pct * 100)}%</span>
     </div>`;
   };
 
@@ -479,8 +480,8 @@ async function chugsView() {
 
   const board = [...ctx.teams]
     .map((t) => ({ t, i: integrityOf(t.rosterId) }))
-    .sort((a, b) => (b.i.judged ? b.i.pct : 2) - (a.i.judged ? a.i.pct : 2) || b.i.owed - a.i.owed)
-    .reverse(); // worst integrity first: shame goes on top
+    // Worst integrity first (shame on top); ties: most overdue, then most chugs owed.
+    .sort((a, b) => a.i.pct - b.i.pct || b.i.overdue - a.i.overdue || b.i.owed - a.i.owed || b.i.lasts - a.i.lasts);
   const repeat = [...rec.entries()].filter(([, r]) => r.owed > 1).sort((a, b) => b[1].owed - a[1].owed);
 
   ui.main.innerHTML = header() + `

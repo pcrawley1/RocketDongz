@@ -3,7 +3,7 @@
 //   • points already scored for the receiving team since the trade, and
 //   • projected rest-of-season points (only for players still on that roster).
 // Early trades lean on projections, late trades on real output. Raw points are still shown for context.
-import { sleeper } from "./sleeper.js?v=20261110132345";
+import { sleeper } from "./sleeper.js?v=20261110132801";
 
 /** All completed trades this season, newest first. */
 export async function loadTrades(leagueId, maxWeek) {
