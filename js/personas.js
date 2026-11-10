@@ -31,6 +31,10 @@ export const PERSONAS = {
       "Unlimited losses. Unlimited watching. Classic {N}.",
       "{N} doesn't lose games, he hosts them.",
     ],
+    trade: [
+      "{N} handed {W} his players and pulled up a chair to watch.",
+      "{N} let {W} take what's his. Again. He's into it.",
+    ],
     chug: [
       "{N} has watched enough. Time to chug.",
       "{N} watches everyone else score, so the least he can do is chug.",
@@ -60,6 +64,10 @@ export const PERSONAS = {
       "Top of the standings, bottom of the height chart.",
       "Crushing the league. Still fits in a ball bag.",
       "Could be the league's best manager, could be a fumble. Same size either way.",
+    ],
+    trade: [
+      "{W} punted Forrest in this deal. Regulation distance.",
+      "Forrest got spiked by {W} on this one. Zev would be proud.",
     ],
     chug: [
       "Careful, Forrest. A full can is half your body weight.",
