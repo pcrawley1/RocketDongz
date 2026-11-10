@@ -1,14 +1,14 @@
-import { sleeper, avatarUrl } from "./sleeper.js?v=20261110132801";
-import { buildTeams, computeAdvanced, sortStandings } from "./stats.js?v=20261110132801";
-import { scoreStats, NON_STARTING } from "./scoring.js?v=20261110132801";
-import { playerNews } from "./news.js?v=20261110132801";
-import { buildNewsletter } from "./newsletter.js?v=20261110132801";
-import { isChugLeague, listChugs, uploadChug, videoUrl, INTEGRITY_START_WEEK } from "./chugs.js?v=20261110132801";
-import { personaFor } from "./personas.js?v=20261110132801";
-import { loadTrades, gradeTrades, replacementLevels } from "./trades.js?v=20261110132801";
-import { preseasonFor } from "./preseason.js?v=20261110132801";
-import { seeded } from "./util.js?v=20261110132801";
-import { esc, f1, f2, pct, rec, signed, stripTags, pairs, leagueDisplay } from "./util.js?v=20261110132801";
+import { sleeper, avatarUrl } from "./sleeper.js?v=20261110132907";
+import { buildTeams, computeAdvanced, sortStandings } from "./stats.js?v=20261110132907";
+import { scoreStats, NON_STARTING } from "./scoring.js?v=20261110132907";
+import { playerNews } from "./news.js?v=20261110132907";
+import { buildNewsletter } from "./newsletter.js?v=20261110132907";
+import { isChugLeague, listChugs, uploadChug, videoUrl, INTEGRITY_START_WEEK } from "./chugs.js?v=20261110132907";
+import { personaFor } from "./personas.js?v=20261110132907";
+import { loadTrades, gradeTrades, replacementLevels } from "./trades.js?v=20261110132907";
+import { preseasonFor } from "./preseason.js?v=20261110132907";
+import { seeded } from "./util.js?v=20261110132907";
+import { esc, f1, f2, pct, rec, signed, stripTags, pairs, leagueDisplay } from "./util.js?v=20261110132907";
 
 const DEFAULT_USER = "PierceCrawley";
 const DEFAULT_LEAGUE = "Rocket Dongs"; // what first-time visitors to the bare URL see
@@ -462,7 +462,8 @@ async function chugsView() {
       body = `<video class="chug-video" controls playsinline preload="metadata" src="${videoUrl(vid.video_path)}#t=0.1"></video>
         <div class="chug-foot"><span class="countdown" data-exp="${expiresAt}">🕒 Self-destructs in ${countdownText(expiresAt - now)}</span>${fileInput("Replace", "link")}</div>`;
     } else if (vid) {
-      body = `<div class="chug-done"><div class="big-check">✅</div><div><b>Chug completed</b><div class="dim">${fmtDate(vid.uploaded_at)} · video self-destructed 🔥</div></div></div>`;
+      const manual = String(vid.video_path).startsWith("manual/");
+      body = `<div class="chug-done"><div class="big-check">✅</div><div><b>Chug completed</b><div class="dim">${manual ? "Confirmed by the league" : `${fmtDate(vid.uploaded_at)} · video self-destructed 🔥`}</div></div></div>`;
     } else {
       body = honor(w)
         ? `${fileInput("🎥 Upload anyway", "upload-btn secondary")}<p class="dim chug-wait">Before integrity tracking started. Post it for bonus integrity.</p>`

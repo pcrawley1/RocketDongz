@@ -1,9 +1,9 @@
 // Builds the weekly newsletter: TL;DR + scoreboard recaps + awards + standings roasts + preview.
-import { computeAdvanced } from "./stats.js?v=20261110132801";
-import { scoreStats, optimalScore, NON_STARTING } from "./scoring.js?v=20261110132801";
-import { avatarUrl } from "./sleeper.js?v=20261110132801";
-import { personaFor } from "./personas.js?v=20261110132801";
-import { esc, f1, f2, rec, pairs, seeded, fill, leagueDisplay } from "./util.js?v=20261110132801";
+import { computeAdvanced } from "./stats.js?v=20261110132907";
+import { scoreStats, optimalScore, NON_STARTING } from "./scoring.js?v=20261110132907";
+import { avatarUrl } from "./sleeper.js?v=20261110132907";
+import { personaFor } from "./personas.js?v=20261110132907";
+import { esc, f1, f2, rec, pairs, seeded, fill, leagueDisplay } from "./util.js?v=20261110132907";
 
 // ---------------------------------------------------------------- templates (short = readable)
 const T = {
