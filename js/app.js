@@ -3,6 +3,7 @@ import { buildTeams, computeAdvanced, sortStandings } from "./stats.js";
 import { scoreStats, NON_STARTING } from "./scoring.js";
 import { playerNews } from "./news.js";
 import { buildNewsletter } from "./newsletter.js";
+import { isChugLeague, listChugs, uploadChug, videoUrl } from "./chugs.js";
 import { esc, f1, f2, pct, rec, signed, stripTags, pairs, leagueDisplay } from "./util.js";
 
 const DEFAULT_USER = "PierceCrawley";
@@ -48,6 +49,10 @@ async function init() {
   ui.main.addEventListener("click", (e) => {
     const li = e.target.closest("li.player[data-id]");
     if (li) toggleNews(li);
+  });
+  ui.main.addEventListener("change", (e) => {
+    const input = e.target.closest("input.chug-file");
+    if (input?.files?.[0]) startChugUpload(input);
   });
 
   $("#share").addEventListener("click", async () => {
@@ -142,6 +147,10 @@ async function loadLeague(leagueId) {
 
 // ---------- render ----------
 function render() {
+  const chugTab = document.querySelector('.tab[data-tab="chugs"]');
+  const chugOk = isChugLeague(ctx?.league);
+  chugTab.hidden = !chugOk;
+  if (tab === "chugs" && ctx?.league && !chugOk) tab = "newsletter";
   ui.tabs.forEach((b) => b.setAttribute("aria-selected", b.dataset.tab === tab));
   const weekTabs = { matchups: ctx?.maxWeek, newsletter: ctx?.lastDone };
   ui.week.hidden = !(tab in weekTabs);
@@ -153,7 +162,7 @@ function render() {
     ui.week.value = String(Math.min(weekFor[tab] || max, max));
   }
   syncUrl();
-  const views = { newsletter, standings, power, matchups, scores };
+  const views = { newsletter, standings, power, matchups, scores, chugs: chugsView };
   (views[tab] || standings)();
 }
 
@@ -349,4 +358,90 @@ function scores() {
       }).join("")}<td>${avg.toFixed(1)}</td></tr>`;
     }).join("")}</tbody></table></div>
   <p class="note">Cell shading shows each team's rank among all scores that week (darker = higher).</p>`;
+}
+
+// ---------- 🍻 chugs ----------
+async function chugsView() {
+  loading("Icing the beers…");
+  let videos = {};
+  try { videos = await listChugs(ctx.league.league_id, ctx.league.season); }
+  catch (e) { setStatus(e.message, true); }
+  if (tab !== "chugs") return;
+
+  const regEnd = (ctx.league.settings.playoff_week_start || 15) - 1;
+  const byRoster = new Map(ctx.teams.map((t) => [t.rosterId, t]));
+  const lowest = (rows) => (rows || []).filter((r) => r.points != null).reduce((m, r) => (!m || r.points < m.points ? r : m), null);
+  const shame = new Map();
+  let done = 0, posted = 0;
+
+  const cards = Array.from({ length: regEnd }, (_, i) => i + 1).map((w) => {
+    const rows = ctx.allWeeks[w];
+    const isDone = w <= ctx.lastDone && rows?.some((r) => r.points > 0);
+    const isLive = !isDone && ctx.isCurrent && w === ctx.currentWeek;
+    const vid = videos[w];
+    if (isDone) done++;
+    if (isDone && vid) posted++;
+
+    if (!isDone) {
+      const low = isLive && rows?.some((r) => r.points > 0) ? lowest(rows) : null;
+      return `<div class="chug-card ${isLive ? "live" : "future"}">
+        <div class="chug-head"><span class="chug-week">Week ${w}</span><span class="chip">${isLive ? "⏳ In progress" : "Upcoming"}</span></div>
+        <p class="dim">${low ? `Currently on the hook: <b>${esc(byRoster.get(low.roster_id)?.team || "")}</b> (${f1(low.points)})` : isLive ? "Someone's getting thirsty…" : "Somebody's future is foamy."}</p>
+      </div>`;
+    }
+
+    const loser = lowest(rows);
+    const t = byRoster.get(loser.roster_id) || { team: "?", owner: "", avatar: null };
+    shame.set(loser.roster_id, (shame.get(loser.roster_id) || 0) + 1);
+    const img = avatarUrl(t.avatar);
+    const fileInput = (label, cls) => `<label class="${cls}">${label}<input class="chug-file" type="file" accept="video/*" hidden
+      data-week="${w}" data-roster="${loser.roster_id}" data-chugger="${esc(t.team)}"></label>`;
+    return `<div class="chug-card ${vid ? "has-video" : "owed"}" data-week="${w}">
+      <div class="chug-head"><span class="chug-week">Week ${w}</span>${vid ? `<span class="chip ok">✅ Chugged</span>` : `<span class="chip owe">🍺 Owes a chug</span>`}</div>
+      <div class="chug-who">${img ? `<img class="av" src="${img}" alt="">` : `<span class="av ph"></span>`}
+        <div><b>${esc(t.team)}</b><div class="dim">${esc(t.owner)} · last place with ${f2(loser.points)}</div></div></div>
+      ${vid
+        ? `<video class="chug-video" controls playsinline preload="metadata" src="${videoUrl(vid.video_path)}#t=0.1"></video>
+           <div class="chug-foot dim">Posted ${new Date(vid.uploaded_at).toLocaleDateString([], { month: "short", day: "numeric" })} · ${fileInput("Replace video", "link")}</div>`
+        : `${fileInput("🎥 Upload chug video", "upload-btn")}<p class="dim chug-wait">🐔 No video yet. The league is waiting.</p>`}
+      <div class="progress" hidden><span></span></div>
+      <p class="chug-err" hidden></p>
+    </div>`;
+  }).join("");
+
+  const repeat = [...shame.entries()].filter(([, n]) => n > 1).sort((a, b) => b[1] - a[1]);
+  ui.main.innerHTML = header() + `
+    <div class="chug-hero">
+      <div class="chug-hero-title">🍻 Chugs</div>
+      <p>Lowest score of the week chugs a beer. On camera. No exceptions.</p>
+      <div class="chug-stats">
+        <div><b>${posted}/${done}</b><span>chugs posted</span></div>
+        <div><b>${done - posted}</b><span>still owed</span></div>
+        ${repeat.length ? `<div class="repeat"><span>Repeat offenders</span>${repeat.map(([rid, n]) => `<div>${"🍺".repeat(n)} ${esc(byRoster.get(Number(rid))?.team || "")}</div>`).join("")}</div>` : ""}
+      </div>
+    </div>
+    <div class="chug-grid">${cards}</div>
+    <p class="note">Anyone with the link can upload. Videos max 50MB (about a minute at 1080p; 4K is too big). Uploading again replaces that week's video.</p>`;
+}
+
+async function startChugUpload(input) {
+  const card = input.closest(".chug-card");
+  const bar = card.querySelector(".progress"), fill = bar.querySelector("span"), err = card.querySelector(".chug-err");
+  const file = input.files[0];
+  err.hidden = true; bar.hidden = false; fill.style.width = "2%";
+  card.classList.add("uploading");
+  try {
+    await uploadChug({
+      leagueId: ctx.league.league_id, season: ctx.league.season, week: Number(input.dataset.week),
+      rosterId: Number(input.dataset.roster), chugger: input.dataset.chugger, file,
+      onProgress: (p) => (fill.style.width = `${Math.max(2, p * 100).toFixed(0)}%`),
+    });
+    setStatus(`🍻 Week ${input.dataset.week} chug posted.`);
+    if (tab === "chugs") chugsView();
+  } catch (e) {
+    bar.hidden = true; card.classList.remove("uploading");
+    err.textContent = e.message; err.hidden = false;
+  } finally {
+    input.value = "";
+  }
 }

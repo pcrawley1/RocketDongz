@@ -276,3 +276,40 @@ tr:has(.team.mine) td { background: var(--mine); }
   .sb-grid, .pv-grid, .awards { grid-template-columns: 1fr; }
   .award-stat b { font-size: 30px; }
 }
+
+/* ===== 🍻 Chugs ===== */
+.tab[hidden] { display: none; }
+.chug-hero {
+  border-radius: 20px; padding: 20px 22px; color: #3b2300; margin-bottom: 16px; box-shadow: var(--shadow);
+  background: linear-gradient(135deg, #ffd60a, #ff9f0a 70%, #ff9500);
+}
+.chug-hero-title { font-size: 30px; font-weight: 800; letter-spacing: -0.6px; }
+.chug-hero p { margin: 4px 0 12px; font-size: 15px; font-weight: 500; }
+.chug-stats { display: flex; gap: 12px; flex-wrap: wrap; }
+.chug-stats > div { background: rgba(255,255,255,.55); border-radius: 12px; padding: 8px 14px; display: flex; flex-direction: column; }
+.chug-stats b { font-size: 24px; font-weight: 800; line-height: 1.1; }
+.chug-stats span { font-size: 12px; font-weight: 600; opacity: .8; }
+.chug-stats .repeat { font-size: 14px; font-weight: 600; }
+.chug-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 12px; }
+.chug-card { background: var(--card); border-radius: var(--r); padding: 14px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 10px; }
+.chug-card.owed { box-shadow: 0 0 0 2px color-mix(in srgb, var(--orange) 70%, transparent), var(--shadow); }
+.chug-card.future { opacity: .6; }
+.chug-card.live { box-shadow: 0 0 0 2px color-mix(in srgb, var(--blue) 50%, transparent), var(--shadow); }
+.chug-card p { margin: 0; }
+.chug-head { display: flex; justify-content: space-between; align-items: center; }
+.chug-week { font-size: 17px; font-weight: 700; }
+.chip.ok { background: color-mix(in srgb, var(--green) 18%, transparent); color: var(--pos); }
+.chip.owe { background: color-mix(in srgb, var(--orange) 20%, transparent); color: var(--orange); }
+.chug-who { display: flex; align-items: center; gap: 10px; }
+.chug-video { width: 100%; max-height: 420px; border-radius: 12px; background: #000; }
+.upload-btn {
+  display: block; text-align: center; padding: 12px; border-radius: 12px; cursor: pointer;
+  background: var(--blue); color: #fff; font-weight: 600; font-size: 15px;
+}
+.upload-btn:active { opacity: .8; }
+.link { color: var(--blue); cursor: pointer; font-weight: 600; }
+.uploading .upload-btn, .uploading .link { pointer-events: none; opacity: .5; }
+.progress { height: 8px; border-radius: 999px; background: var(--fill); overflow: hidden; }
+.progress span { display: block; height: 100%; width: 0; background: var(--green); transition: width .2s; }
+.chug-err { color: var(--red); font-size: 13px; }
+.chug-wait { text-align: center; }
