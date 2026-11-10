@@ -314,3 +314,29 @@ tr:has(.team.mine) td { background: var(--mine); }
 .chug-err { color: var(--red); font-size: 13px; }
 .chug-wait { text-align: center; }
 .chip.aka { background: color-mix(in srgb, var(--pink) 16%, transparent); color: var(--pink); }
+
+/* ===== 🔮 Preseason rankings ===== */
+.pre-hero {
+  display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap;
+  border-radius: 20px; padding: 20px 22px; color: #fff; box-shadow: var(--shadow);
+  background: linear-gradient(135deg, #5e5ce6, #bf5af2 60%, #ff375f);
+}
+.pre-title { font-size: 26px; font-weight: 800; letter-spacing: -0.5px; }
+.pre-hero p { margin: 4px 0 0; font-size: 15px; opacity: .9; max-width: 560px; }
+.grade { background: rgba(255,255,255,.2); border-radius: 16px; padding: 10px 18px; text-align: center; display: flex; flex-direction: column; }
+.grade b { font-size: 44px; font-weight: 900; line-height: 1; }
+.grade span { font-size: 12px; font-weight: 600; opacity: .9; }
+.grade-line { font-size: 16px; font-style: italic; color: var(--ink2); margin: 12px 4px 14px; }
+.pre-callouts .award-stat b { font-size: 26px; }
+.slope-card { margin-top: 14px; padding: 12px 8px; }
+.slope-chart { display: block; width: 100%; max-width: 560px; margin: 0 auto; height: auto; font: 600 14px -apple-system, BlinkMacSystemFont, system-ui, sans-serif; }
+.slope-chart text { fill: var(--ink); }
+.slope-chart .rk { fill: var(--dim); font-weight: 700; }
+.slope-chart .col-title { fill: var(--dim); font-size: 10px; font-weight: 700; letter-spacing: .6px; }
+.slope line { stroke-width: 2.5; stroke-linecap: round; opacity: .85; }
+.slope circle { stroke: none; }
+.slope.up line { stroke: var(--green); } .slope.up circle { fill: var(--green); }
+.slope.down line { stroke: var(--red); } .slope.down circle { fill: var(--red); }
+.slope.flat line { stroke: var(--dim); } .slope.flat circle { fill: var(--dim); }
+.slope.self line { stroke-width: 5; opacity: 1; }
+.slope.self text { fill: var(--pink); font-weight: 800; }

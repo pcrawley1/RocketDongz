@@ -5,6 +5,7 @@ import { playerNews } from "./news.js";
 import { buildNewsletter } from "./newsletter.js";
 import { isChugLeague, listChugs, uploadChug, videoUrl } from "./chugs.js";
 import { personaFor } from "./personas.js";
+import { preseasonFor } from "./preseason.js";
 import { seeded } from "./util.js";
 import { esc, f1, f2, pct, rec, signed, stripTags, pairs, leagueDisplay } from "./util.js";
 
@@ -153,6 +154,11 @@ function render() {
   const chugOk = isChugLeague(ctx?.league);
   chugTab.hidden = !chugOk;
   if (tab === "chugs" && ctx?.league && !chugOk) tab = "newsletter";
+  const pre = preseasonFor(ctx?.league);
+  const preTab = document.querySelector('.tab[data-tab="preseason"]');
+  preTab.hidden = !pre;
+  if (pre) preTab.textContent = `🔮 ${pre.by}'s Rankings`;
+  if (tab === "preseason" && ctx?.league && !pre) tab = "newsletter";
   ui.tabs.forEach((b) => b.setAttribute("aria-selected", b.dataset.tab === tab));
   const weekTabs = { matchups: ctx?.maxWeek, newsletter: ctx?.lastDone };
   ui.week.hidden = !(tab in weekTabs);
@@ -164,7 +170,7 @@ function render() {
     ui.week.value = String(Math.min(weekFor[tab] || max, max));
   }
   syncUrl();
-  const views = { newsletter, standings, power, matchups, scores, chugs: chugsView };
+  const views = { newsletter, standings, power, matchups, scores, chugs: chugsView, preseason: preseasonView };
   (views[tab] || standings)();
 }
 
@@ -453,4 +459,85 @@ function chugTaunt(t, week) {
   if (!p?.chug?.length) return "🐔 No video yet. The league is waiting.";
   const line = p.chug[Math.floor(seeded(`chug-${week}-${t.owner}`)() * p.chug.length)];
   return "🍺 " + esc(line).replace(/\{N\}/g, `<b>${esc(p.nick)}</b>`);
+}
+
+// ---------- 🔮 preseason rankings vs reality ----------
+function preseasonView() {
+  const pre = preseasonFor(ctx.league);
+  const byOwner = new Map(ctx.teams.map((t) => [t.owner.toLowerCase(), t]));
+  const powerOrder = [...ctx.teams].sort((a, b) => b.power - a.power);
+  const standOrder = sortStandings(ctx.teams);
+  const rows = pre.ranks.map((r, i) => {
+    const t = byOwner.get(r.owner.toLowerCase());
+    if (!t) return null;
+    const now = powerOrder.indexOf(t) + 1;
+    return { ...r, t, pre: i + 1, now, stand: standOrder.indexOf(t) + 1, delta: i + 1 - now };
+  }).filter(Boolean);
+  const n = rows.length;
+  if (!n) { ui.main.innerHTML = header() + `<p class="empty">Couldn't match any teams to ${esc(pre.by)}'s list.</p>`; return; }
+
+  const avgMiss = rows.reduce((s, r) => s + Math.abs(r.delta), 0) / n;
+  const rho = 1 - (6 * rows.reduce((s, r) => s + r.delta ** 2, 0)) / (n * (n * n - 1));
+  const [grade, gradeLine] =
+    avgMiss <= 1.5 ? ["A", `${pre.by} might actually know ball. Disgusting.`] :
+    avgMiss <= 2.5 ? ["B", `Respectable. Don't tell ${pre.by}, he'll be insufferable.`] :
+    avgMiss <= 3.5 ? ["C", "Coin-flip accuracy, delivered with total confidence."] :
+    avgMiss <= 4.5 ? ["D", `${pre.by} should keep his day job.`] :
+                     ["F", "A blindfolded raccoon would've done better."];
+  const best = [...rows].sort((a, b) => Math.abs(a.delta) - Math.abs(b.delta) || a.pre - b.pre)[0];
+  const over = [...rows].sort((a, b) => a.delta - b.delta)[0];
+  const slept = [...rows].sort((a, b) => b.delta - a.delta)[0];
+  const self = rows.find((r) => r.owner.toLowerCase() === pre.byOwner.toLowerCase());
+  const selfLine = !self ? "" :
+    self.now <= self.pre ? `Ranked himself #${self.pre} and he's #${self.now}. Annoyingly correct.` :
+    self.now <= 4 ? `Ranked himself #${self.pre}, sitting #${self.now}. Close, but the humility was free.` :
+    self.now <= Math.ceil(n / 2) ? `Ranked himself #${self.pre}. Reality says #${self.now}. Confidence is free.` :
+    `Ranked himself #${self.pre}. He's #${self.now}. Delusion is a hell of a drug.`;
+
+  // Slope chart: preseason rank (left) → current power rank (right).
+  const rowH = 34, top = 34, W = 420, xl = 128, xr = 292, H = top + n * rowH;
+  const y = (rank) => top + (rank - 0.5) * rowH;
+  const isSelf = (r) => self && r === self;
+  const lines = rows.map((r) => {
+    const cls = r.delta > 0 ? "up" : r.delta < 0 ? "down" : "flat";
+    return `<g class="slope ${cls} ${isSelf(r) ? "self" : ""}">
+      <line x1="${xl + 8}" y1="${y(r.pre)}" x2="${xr - 8}" y2="${y(r.now)}"/>
+      <circle cx="${xl + 8}" cy="${y(r.pre)}" r="4"/><circle cx="${xr - 8}" cy="${y(r.now)}" r="4"/>
+      <text x="${xl - 4}" y="${y(r.pre) + 5}" text-anchor="end"><tspan class="rk">${r.pre}</tspan>  ${esc(r.name)}</text>
+      <text x="${xr + 4}" y="${y(r.now) + 5}">${esc(r.name)}  <tspan class="rk">${r.now}</tspan></text>
+    </g>`;
+  }).join("");
+  const svg = `<svg class="slope-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(pre.by)}'s preseason ranks compared with current power ranks">
+    <text class="col-title" x="${xl - 4}" y="16" text-anchor="end">${esc(pre.by.toUpperCase())}'S PRESEASON</text>
+    <text class="col-title" x="${xr + 4}" y="16">POWER RANK NOW</text>
+    ${lines}</svg>`;
+
+  const callout = (icon, title, color, r, text) => `<div class="award" style="--c: var(--${color})">
+    <div class="award-title"><span class="icon-tile">${icon}</span>${title}</div>
+    <div class="award-stat"><b>${esc(r.name)}</b><span>#${r.pre} → #${r.now}</span></div>
+    <p class="quip">${text}</p></div>`;
+
+  ui.main.innerHTML = header() + `
+    <div class="pre-hero">
+      <div><div class="pre-title">🔮 ${esc(pre.by)}'s Preseason Rankings</div>
+        <p>How ${esc(pre.by)}'s ${pre.season} preseason rankings are holding up against the power rankings through week ${ctx.lastDone}.</p></div>
+      <div class="grade"><b>${grade}</b><span>avg miss ${avgMiss.toFixed(1)} spots</span></div>
+    </div>
+    <p class="grade-line">${gradeLine}</p>
+    <div class="awards pre-callouts">
+      ${self ? callout("🪞", `${esc(pre.by)} on ${esc(pre.by)}`, "pink", self, selfLine) : ""}
+      ${callout("🎯", "Best call", "green", best, best.delta === 0 ? "Nailed it exactly. Even a broken clock…" : `Only ${Math.abs(best.delta)} spot${Math.abs(best.delta) > 1 ? "s" : ""} off.`)}
+      ${over.delta < 0 ? callout("🤡", "Most overrated", "red", over, `${Math.abs(over.delta)} spots worse than advertised.`) : ""}
+      ${slept.delta > 0 ? callout("😴", "Slept on", "indigo", slept, `${slept.delta} spots better than ${esc(pre.by)} thought.`) : ""}
+    </div>
+    <div class="card slope-card">${svg}</div>
+    <div class="card" style="margin-top:12px"><table>
+      <thead><tr><th>Pre</th><th class="l">Team</th><th>Power</th><th>Standings</th><th>Record</th><th>Δ</th></tr></thead>
+      <tbody>${rows.map((r) => `<tr>
+        <td class="rank">${r.pre}</td>
+        <td class="l">${teamCell(r.t)}</td>
+        <td><b>${r.now}</b></td><td>${r.stand}</td><td>${rec(r.t.wins, r.t.losses, r.t.ties)}</td>
+        <td class="${r.delta > 0 ? "pos" : r.delta < 0 ? "neg" : "dim"}">${r.delta ? (r.delta > 0 ? "▲" : "▼") + Math.abs(r.delta) : "✓"}</td>
+      </tr>`).join("")}</tbody></table></div>
+    <p class="note">Power rank = 50% all-play record, 30% points per game, 20% last 3 weeks. ▲ = better than ${esc(pre.by)} predicted. Spearman correlation: ${rho.toFixed(2)} (1 = perfect, 0 = random${rho < 0 ? `, negative = ${esc(pre.by)} would have done better ranking it upside down` : ""}).</p>`;
 }
