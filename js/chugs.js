@@ -54,3 +54,7 @@ export function uploadChug({ leagueId, season, week, rosterId, chugger, file, on
     xhr.send(file);
   });
 }
+
+// Integrity tracking starts at this week (per season). Earlier weeks are "honor system":
+// they don't count against anyone, but uploading a video for them still counts as completed.
+export const INTEGRITY_START_WEEK = { "2026": 9 };

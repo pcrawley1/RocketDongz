@@ -392,3 +392,41 @@ th.zev-col { color: var(--purple); }
 .g-faab { background: color-mix(in srgb, var(--yellow) 30%, transparent); font-size: 24px; }
 .trade-total .val { color: var(--ink2); font-size: 13px; }
 .trade-total .val b { font-size: 20px; margin-left: 4px; }
+
+/* chugs v2: self-destruct + integrity */
+.chip.late { background: color-mix(in srgb, var(--red) 16%, transparent); color: var(--red); }
+.chug-card.overdue { box-shadow: 0 0 0 2px color-mix(in srgb, var(--red) 60%, transparent), var(--shadow); }
+.chug-card.completed { box-shadow: 0 0 0 2px color-mix(in srgb, var(--green) 55%, transparent), var(--shadow); }
+.chug-who-main { flex: 1; min-width: 0; }
+.chug-foot { display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
+.countdown { color: var(--orange); font-weight: 600; }
+.chug-done { display: flex; align-items: center; gap: 12px; padding: 14px; border-radius: 12px; background: color-mix(in srgb, var(--green) 12%, transparent); }
+.big-check { font-size: 40px; line-height: 1; }
+.integrity { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+.integrity.compact { margin-top: 4px; }
+.int-label { color: var(--dim); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .3px; }
+.int-bar { flex: 1; min-width: 60px; max-width: 160px; height: 8px; border-radius: 999px; background: var(--fill); overflow: hidden; display: inline-block; }
+.int-bar span { display: block; height: 100%; border-radius: 999px; background: var(--dim); }
+.int-good .int-bar span { background: var(--green); }
+.int-meh .int-bar span { background: var(--orange); }
+.int-bad .int-bar span { background: var(--red); }
+.int-na .int-bar span { background: var(--fill); }
+.int-pct { font-weight: 700; min-width: 34px; font-variant-numeric: tabular-nums; }
+.int-good .int-pct { color: var(--pos); } .int-meh .int-pct { color: var(--orange); } .int-bad .int-pct { color: var(--neg); }
+.int-board { padding: 4px 0; }
+.int-row { display: grid; grid-template-columns: 22px minmax(0, 1.2fr) minmax(0, 1.4fr) auto; align-items: center; gap: 12px; padding: 10px 14px; border-top: 0.5px solid var(--line); }
+.int-row:first-child { border-top: none; }
+.int-name { display: flex; flex-direction: column; min-width: 0; }
+.int-name b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.int-row .int-label { display: none; }
+.int-row .int-bar { max-width: none; }
+.int-tag { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 999px; background: var(--fill); color: var(--dim); white-space: nowrap; }
+.int-tag.int-good { background: color-mix(in srgb, var(--green) 16%, transparent); color: var(--pos); }
+.int-tag.int-meh { background: color-mix(in srgb, var(--orange) 18%, transparent); color: var(--orange); }
+.int-tag.int-bad { background: color-mix(in srgb, var(--red) 15%, transparent); color: var(--neg); }
+@media (max-width: 700px) {
+  .int-row { grid-template-columns: 22px 1fr auto; }
+  .int-row .integrity { grid-column: 2 / 4; }
+}
+.chug-card.honor { opacity: .85; }
+.upload-btn.secondary { background: var(--fill); color: var(--ink); }

@@ -1,14 +1,14 @@
-import { sleeper, avatarUrl } from "./sleeper.js?v=20261110131211";
-import { buildTeams, computeAdvanced, sortStandings } from "./stats.js?v=20261110131211";
-import { scoreStats, NON_STARTING } from "./scoring.js?v=20261110131211";
-import { playerNews } from "./news.js?v=20261110131211";
-import { buildNewsletter } from "./newsletter.js?v=20261110131211";
-import { isChugLeague, listChugs, uploadChug, videoUrl } from "./chugs.js?v=20261110131211";
-import { personaFor } from "./personas.js?v=20261110131211";
-import { loadTrades, gradeTrades, replacementLevels } from "./trades.js?v=20261110131211";
-import { preseasonFor } from "./preseason.js?v=20261110131211";
-import { seeded } from "./util.js?v=20261110131211";
-import { esc, f1, f2, pct, rec, signed, stripTags, pairs, leagueDisplay } from "./util.js?v=20261110131211";
+import { sleeper, avatarUrl } from "./sleeper.js?v=20261110132345";
+import { buildTeams, computeAdvanced, sortStandings } from "./stats.js?v=20261110132345";
+import { scoreStats, NON_STARTING } from "./scoring.js?v=20261110132345";
+import { playerNews } from "./news.js?v=20261110132345";
+import { buildNewsletter } from "./newsletter.js?v=20261110132345";
+import { isChugLeague, listChugs, uploadChug, videoUrl, INTEGRITY_START_WEEK } from "./chugs.js?v=20261110132345";
+import { personaFor } from "./personas.js?v=20261110132345";
+import { loadTrades, gradeTrades, replacementLevels } from "./trades.js?v=20261110132345";
+import { preseasonFor } from "./preseason.js?v=20261110132345";
+import { seeded } from "./util.js?v=20261110132345";
+import { esc, f1, f2, pct, rec, signed, stripTags, pairs, leagueDisplay } from "./util.js?v=20261110132345";
 
 const DEFAULT_USER = "PierceCrawley";
 const DEFAULT_LEAGUE = "Rocket Dongs"; // what first-time visitors to the bare URL see
@@ -387,21 +387,55 @@ async function chugsView() {
   catch (e) { setStatus(e.message, true); }
   if (tab !== "chugs") return;
 
+  const now = Date.now();
   const regEnd = (ctx.league.settings.playoff_week_start || 15) - 1;
   const byRoster = new Map(ctx.teams.map((t) => [t.rosterId, t]));
   const lowest = (rows) => (rows || []).filter((r) => r.points != null).reduce((m, r) => (!m || r.points < m.points ? r : m), null);
-  const shame = new Map();
-  let done = 0, posted = 0;
+  const fmtDate = (d) => new Date(d).toLocaleDateString([], { month: "short", day: "numeric" });
 
-  const cards = Array.from({ length: regEnd }, (_, i) => i + 1).map((w) => {
+  // ---- Integrity: completed ÷ (completed + overdue). The most recent week's chug is "due", not overdue yet.
+  const startWeek = INTEGRITY_START_WEEK[ctx.league.season] || 1;
+  const honor = (w) => w < startWeek;
+  const rec = new Map(ctx.teams.map((t) => [t.rosterId, { owed: 0, completed: 0, overdue: 0, due: 0, lasts: 0 }]));
+  const weekInfo = {};
+  for (let w = 1; w <= regEnd; w++) {
     const rows = ctx.allWeeks[w];
     const isDone = w <= ctx.lastDone && rows?.some((r) => r.points > 0);
-    const isLive = !isDone && ctx.isCurrent && w === ctx.currentWeek;
-    const vid = videos[w];
-    if (isDone) done++;
-    if (isDone && vid) posted++;
+    if (!isDone) continue;
+    const loser = lowest(rows);
+    weekInfo[w] = loser;
+    const r = rec.get(loser.roster_id) || { owed: 0, completed: 0, overdue: 0, due: 0, lasts: 0 };
+    r.lasts++;
+    if (videos[w]) { r.owed++; r.completed++; }        // a posted chug always counts
+    else if (honor(w)) { /* pre-tracking week: not held against anyone */ }
+    else if (w < ctx.lastDone) { r.owed++; r.overdue++; }
+    else { r.owed++; r.due++; }
+    rec.set(loser.roster_id, r);
+  }
+  const integrityOf = (rid) => {
+    const r = rec.get(rid) || { owed: 0, completed: 0, overdue: 0, due: 0 };
+    const judged = r.completed + r.overdue;
+    const pct = judged ? r.completed / judged : 1;
+    const label = !r.owed ? (r.lasts ? "Honor system" : "Untested") : !judged ? "On the clock" : pct === 1 ? "Man of his word" : pct >= 0.75 ? "Mostly honorable" : pct >= 0.5 ? "Shaky" : pct > 0 ? "No integrity" : "Coward";
+    const tier = !judged ? "na" : pct >= 0.8 ? "good" : pct >= 0.5 ? "meh" : "bad";
+    return { ...r, judged, pct, label, tier };
+  };
+  const integrityBar = (rid, compact = false) => {
+    const i = integrityOf(rid);
+    return `<div class="integrity ${compact ? "compact" : ""} int-${i.tier}" title="${i.completed} of ${i.judged} chugs completed${i.due ? `, ${i.due} due now` : ""}">
+      <span class="int-label">Integrity</span>
+      <span class="int-bar"><span style="width:${Math.round(i.pct * 100)}%"></span></span>
+      <span class="int-pct">${i.judged ? Math.round(i.pct * 100) + "%" : "—"}</span>
+    </div>`;
+  };
 
-    if (!isDone) {
+  let done = 0, completed = 0;
+  const cards = Array.from({ length: regEnd }, (_, i) => i + 1).map((w) => {
+    const rows = ctx.allWeeks[w];
+    const loser = weekInfo[w];
+    const isLive = !loser && ctx.isCurrent && w === ctx.currentWeek;
+
+    if (!loser) {
       const low = isLive && rows?.some((r) => r.points > 0) ? lowest(rows) : null;
       return `<div class="chug-card ${isLive ? "live" : "future"}">
         <div class="chug-head"><span class="chug-week">Week ${w}</span><span class="chip">${isLive ? "⏳ In progress" : "Upcoming"}</span></div>
@@ -409,39 +443,87 @@ async function chugsView() {
       </div>`;
     }
 
-    const loser = lowest(rows);
+    done++;
+    const vid = videos[w];
+    if (vid) completed++;
     const t = byRoster.get(loser.roster_id) || { team: "?", owner: "", avatar: null };
-    shame.set(loser.roster_id, (shame.get(loser.roster_id) || 0) + 1);
     const img = avatarUrl(t.avatar);
+    const expiresAt = vid ? Date.parse(vid.uploaded_at) + CHUG_WINDOW_MS : 0;
+    const playable = vid && !vid.video_deleted_at && expiresAt > now;
+    const overdue = !vid && !honor(w) && w < ctx.lastDone;
     const fileInput = (label, cls) => `<label class="${cls}">${label}<input class="chug-file" type="file" accept="video/*" hidden
       data-week="${w}" data-roster="${loser.roster_id}" data-chugger="${esc(t.team)}"></label>`;
-    return `<div class="chug-card ${vid ? "has-video" : "owed"}" data-week="${w}">
-      <div class="chug-head"><span class="chug-week">Week ${w}</span>${vid ? `<span class="chip ok">✅ Chugged</span>` : `<span class="chip owe">🍺 Owes a chug</span>`}</div>
+
+    const status = vid ? `<span class="chip ok">✅ Completed</span>` : honor(w) ? `<span class="chip">🤝 Honor system</span>`
+      : overdue ? `<span class="chip late">🐔 Overdue</span>` : `<span class="chip owe">🍺 Owes a chug</span>`;
+    let body;
+    if (playable) {
+      body = `<video class="chug-video" controls playsinline preload="metadata" src="${videoUrl(vid.video_path)}#t=0.1"></video>
+        <div class="chug-foot"><span class="countdown" data-exp="${expiresAt}">🕒 Self-destructs in ${countdownText(expiresAt - now)}</span>${fileInput("Replace", "link")}</div>`;
+    } else if (vid) {
+      body = `<div class="chug-done"><div class="big-check">✅</div><div><b>Chug completed</b><div class="dim">${fmtDate(vid.uploaded_at)} · video self-destructed 🔥</div></div></div>`;
+    } else {
+      body = honor(w)
+        ? `${fileInput("🎥 Upload anyway", "upload-btn secondary")}<p class="dim chug-wait">Before integrity tracking started. Post it for bonus integrity.</p>`
+        : `${fileInput("🎥 Upload chug video", "upload-btn")}<p class="dim chug-wait">${overdue ? "Overdue. Integrity is taking damage. " : ""}${chugTaunt(t, w)}</p>`;
+    }
+    return `<div class="chug-card ${vid ? (playable ? "has-video" : "completed") : honor(w) ? "honor" : overdue ? "overdue" : "owed"}" data-week="${w}">
+      <div class="chug-head"><span class="chug-week">Week ${w}</span>${status}</div>
       <div class="chug-who">${img ? `<img class="av" src="${img}" alt="">` : `<span class="av ph"></span>`}
-        <div><b>${esc(t.team)}</b><div class="dim">${esc(t.owner)} · last place with ${f2(loser.points)}</div></div></div>
-      ${vid
-        ? `<video class="chug-video" controls playsinline preload="metadata" src="${videoUrl(vid.video_path)}#t=0.1"></video>
-           <div class="chug-foot dim">Posted ${new Date(vid.uploaded_at).toLocaleDateString([], { month: "short", day: "numeric" })} · ${fileInput("Replace video", "link")}</div>`
-        : `${fileInput("🎥 Upload chug video", "upload-btn")}<p class="dim chug-wait">${chugTaunt(t, w)}</p>`}
+        <div class="chug-who-main"><b>${esc(t.team)}</b><div class="dim">${esc(t.owner)} · last place with ${f2(loser.points)}</div>${integrityBar(loser.roster_id, true)}</div></div>
+      ${body}
       <div class="progress" hidden><span></span></div>
       <p class="chug-err" hidden></p>
     </div>`;
   }).join("");
 
-  const repeat = [...shame.entries()].filter(([, n]) => n > 1).sort((a, b) => b[1] - a[1]);
+  const board = [...ctx.teams]
+    .map((t) => ({ t, i: integrityOf(t.rosterId) }))
+    .sort((a, b) => (b.i.judged ? b.i.pct : 2) - (a.i.judged ? a.i.pct : 2) || b.i.owed - a.i.owed)
+    .reverse(); // worst integrity first: shame goes on top
+  const repeat = [...rec.entries()].filter(([, r]) => r.owed > 1).sort((a, b) => b[1].owed - a[1].owed);
+
   ui.main.innerHTML = header() + `
     <div class="chug-hero">
       <div class="chug-hero-title">🍻 Chugs</div>
-      <p>Lowest score of the week chugs a beer. On camera. No exceptions.</p>
+      <p>Lowest score of the week chugs a beer. On camera. No exceptions. Videos self-destruct 6 hours after posting; the ✅ is forever.</p>
       <div class="chug-stats">
-        <div><b>${posted}/${done}</b><span>chugs posted</span></div>
-        <div><b>${done - posted}</b><span>still owed</span></div>
-        ${repeat.length ? `<div class="repeat"><span>Repeat offenders</span>${repeat.map(([rid, n]) => `<div>${"🍺".repeat(n)} ${esc(byRoster.get(Number(rid))?.team || "")}</div>`).join("")}</div>` : ""}
+        <div><b>${completed}/${done}</b><span>chugs completed</span></div>
+        <div><b>${[...rec.values()].reduce((s, r) => s + r.due + r.overdue, 0)}</b><span>owed (tracked)</span></div>
+        ${repeat.length ? `<div class="repeat"><span>Repeat offenders</span>${repeat.map(([rid, r]) => `<div>${"🍺".repeat(r.owed)} ${esc(byRoster.get(Number(rid))?.team || "")}</div>`).join("")}</div>` : ""}
       </div>
     </div>
+    <h3 class="section-h">Integrity Board</h3>
+    <div class="card int-board">${board.map(({ t, i }) => `
+      <div class="int-row">
+        ${avatarUrl(t.avatar) ? `<img class="av sm" src="${avatarUrl(t.avatar)}" alt="">` : `<span class="av ph sm"></span>`}
+        <div class="int-name"><b>${esc(t.team)}</b><span class="dim">${!i.lasts ? "never been last" : !i.owed ? `last ${i.lasts}× (honor system)` : [i.judged ? `${i.completed}/${i.judged} chugged` : "", i.due ? `${i.due} due now` : ""].filter(Boolean).join(" · ")}</span></div>
+        ${integrityBar(t.rosterId)}
+        <span class="int-tag int-${i.tier}">${i.label}</span>
+      </div>`).join("")}
+    </div>
+    <h3 class="section-h">Weekly Chugs</h3>
     <div class="chug-grid">${cards}</div>
-    <p class="note">Anyone with the link can upload. Videos max 50MB: set your iPhone to <b>Settings → Camera → Record Video → 1080p at 30 fps</b> (4K is too big). Uploading again replaces that week's video.</p>`;
+    <p class="note">Anyone with the link can upload. Videos max 50MB: set your iPhone to <b>Settings → Camera → Record Video → 1080p at 30 fps</b>. Videos are deleted 6 hours after upload; the chug stays marked complete. Integrity = chugs completed ÷ chugs owed, starting week ${startWeek}; a chug only counts against you once another week has finished.</p>`;
 }
+
+const CHUG_WINDOW_MS = 6 * 60 * 60 * 1000;
+function countdownText(ms) {
+  if (ms <= 0) return "moments";
+  const h = Math.floor(ms / 3600000), m = Math.floor((ms % 3600000) / 60000);
+  return h ? `${h}h ${m}m` : `${m}m`;
+}
+// Tick countdowns every 30s; when one hits zero, re-render so the card flips to ✅.
+setInterval(() => {
+  if (tab !== "chugs") return;
+  let expired = false;
+  document.querySelectorAll(".countdown[data-exp]").forEach((el) => {
+    const left = Number(el.dataset.exp) - Date.now();
+    if (left <= 0) expired = true;
+    else el.textContent = `🕒 Self-destructs in ${countdownText(left)}`;
+  });
+  if (expired) chugsView();
+}, 30000);
 
 async function startChugUpload(input) {
   const card = input.closest(".chug-card");

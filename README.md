@@ -20,3 +20,8 @@ Switch the username, season, or league in the header. Your choices are saved in 
 
 ## Deploying
 Run `python3 stamp.py` before committing. It version-stamps every JS/CSS reference (so browsers never mix cached old and new files) and regenerates the short-link pages (/spuds, /spuds/rankings, /chugs), which are full copies of the app with their own link-preview cards.
+
+## Chugs (Supabase project `rocketdongz`)
+- Videos upload to the public `chugs` bucket; a row in `public.chugs` marks the week as completed.
+- Edge function `chug-janitor` (run every 15 min by pg_cron) deletes videos 6 hours after upload and sets `video_deleted_at`. The row stays, so the ✅ and integrity are permanent.
+- Integrity tracking start week is `INTEGRITY_START_WEEK` in `js/chugs.js`.
