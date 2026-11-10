@@ -33,3 +33,11 @@ export function seeded(seedStr) {
 }
 export const pick = (arr, seed) => arr[Math.floor(seeded(seed)() * arr.length)];
 export const fill = (tpl, vars) => tpl.replace(/\{(\w+)\}/g, (_, k) => (k in vars ? vars[k] : `{${k}}`));
+
+/** Short display name + emoji for a league (e.g. "Studs and Spuds FFL" → 🥔 "Studs and Spuds"). */
+export function leagueDisplay(leagueName = "") {
+  const name = leagueName.replace(/\s+(FFL|FFBL|League|Fantasy Football)$/i, "").trim() || leagueName;
+  const n = name.toLowerCase();
+  const emoji = /spud|potato/.test(n) ? "🥔" : /rocket|dong/.test(n) ? "🚀" : "🏈";
+  return { name, emoji };
+}

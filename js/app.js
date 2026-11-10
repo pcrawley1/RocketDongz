@@ -3,7 +3,7 @@ import { buildTeams, computeAdvanced, sortStandings } from "./stats.js";
 import { scoreStats, NON_STARTING } from "./scoring.js";
 import { playerNews } from "./news.js";
 import { buildNewsletter } from "./newsletter.js";
-import { esc, f1, f2, pct, rec, signed, stripTags, pairs } from "./util.js";
+import { esc, f1, f2, pct, rec, signed, stripTags, pairs, leagueDisplay } from "./util.js";
 
 const DEFAULT_USER = "PierceCrawley";
 const DEFAULT_LEAGUE = "Rocket Dongs"; // what first-time visitors to the bare URL see
@@ -110,6 +110,9 @@ async function loadLeague(leagueId) {
       sleeper.league(leagueId), sleeper.users(leagueId), sleeper.rosters(leagueId), sleeper.state(),
     ]);
     store.set("leagueName", league.name);
+    const disp = leagueDisplay(league.name);
+    $("#app-title").textContent = `${disp.emoji} ${disp.name}`;
+    document.title = `${disp.name} Gazette`;
     const regEnd = (league.settings.playoff_week_start || 15) - 1;
     const isCurrent = league.season === state.league_season && league.status !== "complete";
     const currentWeek = isCurrent ? Math.max(1, Number(state.week)) : regEnd;
@@ -168,7 +171,7 @@ function header() {
   const { league, lastDone, isCurrent } = ctx;
   const type = { 0: "Redraft", 1: "Keeper", 2: "Dynasty" }[league.settings.type] ?? "";
   return `<div class="league-head">
-    <h2>${esc(league.name)}</h2>
+    <h2>${esc(leagueDisplay(league.name).name)}</h2>
     <p>${league.season} · ${league.total_rosters} teams · ${type} · ${isCurrent ? `through week ${lastDone}` : "final regular season"}</p>
   </div>`;
 }
