@@ -313,3 +313,4 @@ tr:has(.team.mine) td { background: var(--mine); }
 .progress span { display: block; height: 100%; width: 0; background: var(--green); transition: width .2s; }
 .chug-err { color: var(--red); font-size: 13px; }
 .chug-wait { text-align: center; }
+.chip.aka { background: color-mix(in srgb, var(--pink) 16%, transparent); color: var(--pink); }

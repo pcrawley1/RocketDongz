@@ -25,7 +25,7 @@ export async function listChugs(leagueId, season) {
 export function uploadChug({ leagueId, season, week, rosterId, chugger, file, onProgress }) {
   return new Promise((resolve, reject) => {
     if (file.size > MAX_BYTES) {
-      return reject(new Error(`That video is ${(file.size / 1048576).toFixed(0)}MB. The max is 50MB. Trim it, or record at 1080p instead of 4K.`));
+      return reject(new Error(`That video is ${(file.size / 1048576).toFixed(0)}MB. The max is 50MB. Trim it, or switch your iPhone to Settings → Camera → Record Video → 1080p at 30 fps and re-record.`));
     }
     const ext = (file.name.split(".").pop() || "mp4").toLowerCase().replace(/[^a-z0-9]/g, "") || "mp4";
     const path = `${leagueId}/${season}/week-${week}-${Date.now()}.${ext}`;

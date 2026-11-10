@@ -4,6 +4,8 @@ import { scoreStats, NON_STARTING } from "./scoring.js";
 import { playerNews } from "./news.js";
 import { buildNewsletter } from "./newsletter.js";
 import { isChugLeague, listChugs, uploadChug, videoUrl } from "./chugs.js";
+import { personaFor } from "./personas.js";
+import { seeded } from "./util.js";
 import { esc, f1, f2, pct, rec, signed, stripTags, pairs, leagueDisplay } from "./util.js";
 
 const DEFAULT_USER = "PierceCrawley";
@@ -403,7 +405,7 @@ async function chugsView() {
       ${vid
         ? `<video class="chug-video" controls playsinline preload="metadata" src="${videoUrl(vid.video_path)}#t=0.1"></video>
            <div class="chug-foot dim">Posted ${new Date(vid.uploaded_at).toLocaleDateString([], { month: "short", day: "numeric" })} · ${fileInput("Replace video", "link")}</div>`
-        : `${fileInput("🎥 Upload chug video", "upload-btn")}<p class="dim chug-wait">🐔 No video yet. The league is waiting.</p>`}
+        : `${fileInput("🎥 Upload chug video", "upload-btn")}<p class="dim chug-wait">${chugTaunt(t, w)}</p>`}
       <div class="progress" hidden><span></span></div>
       <p class="chug-err" hidden></p>
     </div>`;
@@ -421,7 +423,7 @@ async function chugsView() {
       </div>
     </div>
     <div class="chug-grid">${cards}</div>
-    <p class="note">Anyone with the link can upload. Videos max 50MB (about a minute at 1080p; 4K is too big). Uploading again replaces that week's video.</p>`;
+    <p class="note">Anyone with the link can upload. Videos max 50MB: set your iPhone to <b>Settings → Camera → Record Video → 1080p at 30 fps</b> (4K is too big). Uploading again replaces that week's video.</p>`;
 }
 
 async function startChugUpload(input) {
@@ -444,4 +446,11 @@ async function startChugUpload(input) {
   } finally {
     input.value = "";
   }
+}
+
+function chugTaunt(t, week) {
+  const p = personaFor(t.owner);
+  if (!p?.chug?.length) return "🐔 No video yet. The league is waiting.";
+  const line = p.chug[Math.floor(seeded(`chug-${week}-${t.owner}`)() * p.chug.length)];
+  return "🍺 " + esc(line).replace(/\{N\}/g, `<b>${esc(p.nick)}</b>`);
 }

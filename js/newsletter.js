@@ -2,6 +2,7 @@
 import { computeAdvanced } from "./stats.js";
 import { scoreStats, optimalScore, NON_STARTING } from "./scoring.js";
 import { avatarUrl } from "./sleeper.js";
+import { personaFor } from "./personas.js";
 import { esc, f1, f2, rec, pairs, seeded, fill, leagueDisplay } from "./util.js";
 
 // ---------------------------------------------------------------- templates (short = readable)
@@ -139,6 +140,12 @@ export function buildNewsletter(d) {
     }
     return arr[start];
   };
+  // Inside jokes: a persona line for this team's owner, or null to fall back to the generic line.
+  const pLine = (rid, cat, key, vars = {}) => {
+    const p = personaFor(owner(rid));
+    const arr = p?.[cat];
+    return arr?.length ? fill(pick(arr, `${seed}-${cat}-${key}-${rid}`), { N: B(p.nick), ...vars }) : null;
+  };
 
   const rows = allWeeks[W] || [];
   const games = pairs(rows).filter((g) => g.length === 2);
@@ -184,7 +191,8 @@ export function buildNewsletter(d) {
   };
   const recapHtml = [...results].sort((a, b) => order[a.kind] - order[b.kind] || b.m - a.m).map(({ w, l, m, kind }) => {
     const lb = fact.get(l.roster_id).bench[0];
-    const quip = fill(pick(T.recap[kind], `${seed}-recap-${w.roster_id}`), {
+    const pv = { W: B(name(w.roster_id)), L: B(name(l.roster_id)), s: f2(l.points) };
+    const quip = pLine(l.roster_id, "loss", "r", pv) || pLine(w.roster_id, "win", "r", pv) || fill(pick(T.recap[kind], `${seed}-recap-${w.roster_id}`), {
       W: B(name(w.roster_id)), L: B(name(l.roster_id)),
       lBench: lb ? `${esc(pname(lb.id))}'s ${f1(lb.pts)}` : "the bench",
     });
@@ -208,8 +216,8 @@ export function buildNewsletter(d) {
   // --- awards: big stat first, then who, then a one-liner
   const awards = [];
   const award = (a) => awards.push(a);
-  award({ icon: "🚀", title: "Rocket of the Week", color: "orange", stat: f2(topRow.points), who: who(topRow.roster_id), quip: pick(T.rocket, seed + "r") });
-  award({ icon: "🗑️", title: "Dong of the Week", color: "red", stat: f2(lowRow.points), who: who(lowRow.roster_id), quip: pick(T.dong, seed + "d") });
+  award({ icon: "🚀", title: "Rocket of the Week", color: "orange", stat: f2(topRow.points), who: who(topRow.roster_id), quip: pLine(topRow.roster_id, "high", "a", { s: f2(topRow.points) }) || pick(T.rocket, seed + "r") });
+  award({ icon: "🗑️", title: "Dong of the Week", color: "red", stat: f2(lowRow.points), who: who(lowRow.roster_id), quip: pLine(lowRow.roster_id, "low", "a", { s: f2(lowRow.points) }) || pick(T.dong, seed + "d") });
 
   const benchBoss = [...fact.values()].sort((a, b) => b.left - a.left)[0];
   if (benchBoss && benchBoss.left >= 8) {
@@ -217,7 +225,7 @@ export function buildNewsletter(d) {
     const res = results.find((x) => x.w.roster_id === rid || x.l.roster_id === rid);
     const flips = res && res.l.roster_id === rid && benchBoss.opt > res.w.points;
     award({ icon: "🪑", title: "Bench Blunder", color: "purple", stat: `${f1(benchBoss.left)}`, sub: "pts left on bench", who: who(rid),
-      quip: flips ? `Best lineup was ${f2(benchBoss.opt)}. <b>That's a win thrown in the trash.</b>` : pick(T.bench, seed + "b") });
+      quip: flips ? `Best lineup was ${f2(benchBoss.opt)}. <b>That's a win thrown in the trash.</b>` : pLine(rid, "bench", "a") || pick(T.bench, seed + "b") });
   }
 
   const allStarters = [...fact.values()].flatMap((f) => f.starters.filter((s) => s.id !== "0" && s.proj != null).map((s) => ({ ...s, rid: f.r.roster_id })));
@@ -267,8 +275,8 @@ export function buildNewsletter(d) {
       <span class="rank-badge ${zone}">${i + 1}</span>
       ${av(t.rosterId)}
       <div class="st-main">
-        <div class="st-top"><b>${esc(t.team)}</b><span class="chip">${rec(t.wins, t.losses, t.ties)}</span>${t.streak ? `<span class="chip streak ${streakCls}">${esc(t.streak)}</span>` : ""}</div>
-        <div class="roast">${roast(t, i)}</div>
+        <div class="st-top"><b>${esc(t.team)}</b><span class="chip">${rec(t.wins, t.losses, t.ties)}</span>${personaFor(t.owner) ? `<span class="chip aka">${esc(personaFor(t.owner).tag)}</span>` : ""}${t.streak ? `<span class="chip streak ${streakCls}">${esc(t.streak)}</span>` : ""}</div>
+        <div class="roast">${pLine(t.rosterId, "standing", "st") || roast(t, i)}</div>
       </div>
       <div class="st-power"><span class="dim">PWR</span><b>${pr}</b>${move ? `<span class="${move > 0 ? "pos" : "neg"}">${move > 0 ? "▲" : "▼"}${Math.abs(move)}</span>` : ""}</div>
     </div>`;
