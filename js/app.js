@@ -6,6 +6,7 @@ import { buildNewsletter } from "./newsletter.js";
 import { esc, f1, f2, pct, rec, signed, stripTags, pairs } from "./util.js";
 
 const DEFAULT_USER = "PierceCrawley";
+const DEFAULT_LEAGUE = "Rocket Dongs"; // what first-time visitors to the bare URL see
 const $ = (s) => document.querySelector(s);
 const store = {
   get: (k, d) => { try { return localStorage.getItem(k) ?? d; } catch { return d; } },
@@ -21,6 +22,7 @@ const ui = {
 // Shareable links: ?league=<id>&tab=newsletter&week=9 opens straight to that view.
 const params = new URLSearchParams(location.search);
 const linkLeague = params.get("league");
+if (params.get("ln")) store.set("leagueName", params.get("ln")), store.set("league", "");
 let linkWeek = Number(params.get("week")) || null;
 
 let ctx = null;
@@ -91,7 +93,7 @@ async function loadUser() {
       return setStatus("");
     }
     ui.league.innerHTML = leagues.map((l) => `<option value="${l.league_id}">${esc(l.name)}</option>`).join("");
-    const savedName = store.get("leagueName", "");
+    const savedName = store.get("leagueName", DEFAULT_LEAGUE);
     const pick = leagues.find((l) => l.league_id === store.get("league")) || leagues.find((l) => l.name === savedName) || leagues[0];
     ui.league.value = pick.league_id;
     ctx = { me };
