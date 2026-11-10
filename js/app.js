@@ -1,13 +1,13 @@
-import { sleeper, avatarUrl } from "./sleeper.js?v=20261110123555";
-import { buildTeams, computeAdvanced, sortStandings } from "./stats.js?v=20261110123555";
-import { scoreStats, NON_STARTING } from "./scoring.js?v=20261110123555";
-import { playerNews } from "./news.js?v=20261110123555";
-import { buildNewsletter } from "./newsletter.js?v=20261110123555";
-import { isChugLeague, listChugs, uploadChug, videoUrl } from "./chugs.js?v=20261110123555";
-import { personaFor } from "./personas.js?v=20261110123555";
-import { preseasonFor } from "./preseason.js?v=20261110123555";
-import { seeded } from "./util.js?v=20261110123555";
-import { esc, f1, f2, pct, rec, signed, stripTags, pairs, leagueDisplay } from "./util.js?v=20261110123555";
+import { sleeper, avatarUrl } from "./sleeper.js?v=20261110123726";
+import { buildTeams, computeAdvanced, sortStandings } from "./stats.js?v=20261110123726";
+import { scoreStats, NON_STARTING } from "./scoring.js?v=20261110123726";
+import { playerNews } from "./news.js?v=20261110123726";
+import { buildNewsletter } from "./newsletter.js?v=20261110123726";
+import { isChugLeague, listChugs, uploadChug, videoUrl } from "./chugs.js?v=20261110123726";
+import { personaFor } from "./personas.js?v=20261110123726";
+import { preseasonFor } from "./preseason.js?v=20261110123726";
+import { seeded } from "./util.js?v=20261110123726";
+import { esc, f1, f2, pct, rec, signed, stripTags, pairs, leagueDisplay } from "./util.js?v=20261110123726";
 
 const DEFAULT_USER = "PierceCrawley";
 const DEFAULT_LEAGUE = "Rocket Dongs"; // what first-time visitors to the bare URL see
@@ -25,12 +25,14 @@ const ui = {
 
 // Shareable links: ?league=<id>&tab=newsletter&week=9 opens straight to that view.
 const params = new URLSearchParams(location.search);
+const pageDefaults = window.RD_DEFAULTS || {}; // set by generated short-link pages (e.g. /spuds/)
 const linkLeague = params.get("league");
-if (params.get("ln")) store.set("leagueName", params.get("ln")), store.set("league", "");
+const linkLeagueName = params.get("ln") || (linkLeague ? null : pageDefaults.ln);
+if (linkLeagueName) store.set("leagueName", linkLeagueName), store.set("league", "");
 let linkWeek = Number(params.get("week")) || null;
 
 let ctx = null;
-let tab = params.get("tab") || store.get("tab", "newsletter");
+let tab = params.get("tab") || pageDefaults.tab || store.get("tab", "newsletter");
 const weekFor = {}; // remembers selected week per tab
 
 init();

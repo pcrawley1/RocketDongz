@@ -3,6 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!--page-meta-->
+  <base href="../">
   <title>Rocket Dongs Chugs</title>
   <meta property="og:title" content="🍻 Rocket Dongs Chugs">
   <meta property="og:description" content="Last place chugs. On camera. No exceptions. Upload your shame here.">
@@ -12,8 +14,35 @@
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta name="twitter:card" content="summary_large_image">
-  <!-- JS redirect (not meta refresh) so link-preview bots stay on this page and use the tags above. -->
-  <script>location.replace("../?ln=Rocket%20Dongs&tab=chugs");</script>
+  <script>window.RD_DEFAULTS = {"ln": "Rocket Dongs", "tab": "chugs"};</script>
+  <!--/page-meta-->
+  <link rel="stylesheet" href="styles.css?v=20261110123726">
 </head>
-<body style="font-family:system-ui;padding:24px"><a href="../?ln=Rocket%20Dongs&tab=chugs">Rocket Dongs Chugs →</a></body>
+<body>
+  <header class="top">
+    <h1 id="app-title">🏈 Fantasy</h1>
+    <form id="user-form" class="controls">
+      <input id="username" placeholder="Sleeper username" autocomplete="off" aria-label="Sleeper username">
+      <select id="season" aria-label="Season"></select>
+      <select id="league" aria-label="League"></select>
+      <button type="submit">Load</button>
+    </form>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab" data-tab="newsletter">📰 Newsletter</button>
+    <button class="tab" data-tab="standings">Standings</button>
+    <button class="tab" data-tab="power">Power rankings</button>
+    <button class="tab" data-tab="matchups">Matchups</button>
+    <button class="tab" data-tab="scores">Weekly scores</button>
+    <button class="tab" data-tab="chugs" hidden>🍻 Chugs</button>
+    <select id="week" aria-label="Week" hidden></select>
+    <button id="share" class="share" type="button">🔗 Share link</button>
+  </nav>
+
+  <p id="status" role="status"></p>
+  <main id="main"></main>
+
+  <script type="module" src="js/app.js?v=20261110123726"></script>
+</body>
 </html>

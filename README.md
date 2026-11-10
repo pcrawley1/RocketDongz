@@ -19,4 +19,4 @@ Switch the username, season, or league in the header. Your choices are saved in 
 - `js/app.js`: UI and rendering
 
 ## Deploying
-Run `python3 stamp.py` before committing. It version-stamps every JS/CSS reference so browsers never mix cached old files with new ones after a deploy.
+Run `python3 stamp.py` before committing. It version-stamps every JS/CSS reference (so browsers never mix cached old and new files) and regenerates the short-link pages (/spuds, /spuds/rankings, /chugs), which are full copies of the app with their own link-preview cards.
