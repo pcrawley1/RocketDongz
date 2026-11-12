@@ -430,3 +430,18 @@ th.zev-col { color: var(--purple); }
 }
 .chug-card.honor { opacity: .85; }
 .upload-btn.secondary { background: var(--fill); color: var(--ink); }
+
+/* ===== 🛒 Waivers ===== */
+.ww-hero { background: linear-gradient(135deg, #34c759, #30b0c7 55%, #0a84ff); }
+.ww-card { padding: 12px 14px; }
+.ww-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; font-size: 13px; }
+.ww-head .trade-name { flex: 1; min-width: 140px; }
+.ww-claim { background: color-mix(in srgb, var(--yellow) 25%, transparent); }
+.ww-sign { display: inline-block; width: 16px; font-weight: 800; }
+.ww-sign.plus { color: var(--green); } .ww-sign.minus { color: var(--red); }
+.ww-badge { margin-left: 8px; font-size: 11px; font-weight: 700; color: #fff; padding: 2px 8px; border-radius: 999px; display: inline-block; min-width: 0; height: auto; }
+.ww-now { font-size: 11px; }
+.ww-quip { margin-top: 10px !important; }
+.ww-filter { margin: 22px 4px -10px; }
+.ww-filter select { font: inherit; font-size: 15px; padding: 8px 12px; border-radius: 10px; border: none; background: var(--card); color: var(--ink); box-shadow: var(--shadow); }
+@media (max-width: 560px) { .ww-badge { margin-left: 4px; } .trade-list .pname { white-space: normal; } }

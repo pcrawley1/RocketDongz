@@ -31,14 +31,16 @@ export const sleeper = {
   players: () => loadPlayers(),
   // Unofficial endpoint (what the Sleeper app uses). Returns { [player_id]: { stats, opponent, injury } }.
   projections: (season, week) => projections(season, week),
+  // Same shape as projections, but actual box-score stats for a finished week.
+  stats: (season, week) => projections(season, week, "stats"),
 };
 
 const projCache = new Map();
-function projections(season, week) {
-  const key = `${season}-${week}`;
+function projections(season, week, kind = "projections") {
+  const key = `${kind}-${season}-${week}`;
   if (!projCache.has(key)) {
     const pos = ["QB", "RB", "WR", "TE", "K", "DEF"].map((p) => `position[]=${p}`).join("&");
-    const p = fetch(`https://api.sleeper.com/projections/nfl/${season}/${week}?season_type=regular&${pos}`)
+    const p = fetch(`https://api.sleeper.com/${kind}/nfl/${season}/${week}?season_type=regular&${pos}`)
       .then((r) => (r.ok ? r.json() : []))
       .then((rows) => {
         const out = {};

@@ -35,6 +35,10 @@ export const PERSONAS = {
       "{N} handed {W} his players and pulled up a chair to watch.",
       "{N} let {W} take what's his. Again. He's into it.",
     ],
+    waiver: [
+      "{N} picked up {P} just to have someone new to watch from the corner.",
+      "{N} brought {P} home. He'll be watching him score for other teams by Sunday.",
+    ],
     chug: [
       "{N} has watched enough. Time to chug.",
       "{N} watches everyone else score, so the least he can do is chug.",
@@ -68,6 +72,10 @@ export const PERSONAS = {
     trade: [
       "{W} punted Forrest in this deal. Regulation distance.",
       "Forrest got spiked by {W} on this one. Zev would be proud.",
+    ],
+    waiver: [
+      "Forrest added {P}. Had to stand on a chair to reach the waiver wire.",
+      "{P} joins Forrest's squad and is immediately taller than the owner.",
     ],
     chug: [
       "Careful, Forrest. A full can is half your body weight.",
