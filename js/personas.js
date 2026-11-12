@@ -35,6 +35,10 @@ export const PERSONAS = {
       "{N} handed {W} his players and pulled up a chair to watch.",
       "{N} let {W} take what's his. Again. He's into it.",
     ],
+    preview: [
+      "{N} will be watching this one closely. He likes to watch.",
+      "Win or lose, {N} has a front-row seat.",
+    ],
     waiver: [
       "{N} picked up {P} just to have someone new to watch from the corner.",
       "{N} brought {P} home. He'll be watching him score for other teams by Sunday.",
@@ -72,6 +76,10 @@ export const PERSONAS = {
     trade: [
       "{W} punted Forrest in this deal. Regulation distance.",
       "Forrest got spiked by {W} on this one. Zev would be proud.",
+    ],
+    preview: [
+      "Forrest is ready. Fully inflated, 13 PSI.",
+      "Somebody's going to spike Forrest this week. The question is who.",
     ],
     waiver: [
       "Forrest added {P}. Had to stand on a chair to reach the waiver wire.",

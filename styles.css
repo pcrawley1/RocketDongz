@@ -445,3 +445,23 @@ th.zev-col { color: var(--purple); }
 .ww-filter { margin: 22px 4px -10px; }
 .ww-filter select { font: inherit; font-size: 15px; padding: 8px 12px; border-radius: 10px; border: none; background: var(--card); color: var(--ink); box-shadow: var(--shadow); }
 @media (max-width: 560px) { .ww-badge { margin-left: 4px; } .trade-list .pname { white-space: normal; } }
+
+/* ===== Preview edition ===== */
+.stake { display: inline-block; margin-top: 4px; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: var(--fill); color: var(--ink2); white-space: nowrap; }
+.st-must { background: color-mix(in srgb, var(--red) 16%, transparent); color: var(--red); }
+.st-bubble { background: color-mix(in srgb, var(--orange) 18%, transparent); color: var(--orange); }
+.st-seed, .st-clinched { background: color-mix(in srgb, var(--green) 16%, transparent); color: var(--green); }
+.st-safe { background: color-mix(in srgb, var(--blue) 14%, transparent); color: var(--blue); }
+.st-out { background: var(--fill); color: var(--dim); }
+.pv-story { font-size: 14px; line-height: 1.45; color: var(--ink2); margin: 10px 0 4px; }
+.pv-story b { color: var(--ink); }
+.pv-lean { border-top: 0.5px solid var(--line); padding-top: 8px; }
+.lean-h { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--dim); margin: 4px 0 2px; }
+.pp-card { padding: 4px 0; }
+.pp-row { display: flex; align-items: center; gap: 10px; padding: 8px 14px; border-top: 0.5px solid var(--line); }
+.pp-row:first-child { border-top: none; }
+.pp-row .rank { width: 18px; text-align: right; }
+.pp-name { flex: 1; min-width: 0; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pp-line { font-size: 11px; font-weight: 700; color: var(--blue); text-transform: uppercase; letter-spacing: .5px; padding: 6px 14px; border-top: 2px dashed color-mix(in srgb, var(--blue) 60%, transparent); }
+.pp-sub { margin: -4px 4px 10px; }
+.recap-link { text-align: center; margin: 26px 0 8px; }

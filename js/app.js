@@ -1,15 +1,16 @@
-import { sleeper, avatarUrl } from "./sleeper.js?v=20261112115205";
-import { buildTeams, computeAdvanced, sortStandings } from "./stats.js?v=20261112115205";
-import { scoreStats, NON_STARTING } from "./scoring.js?v=20261112115205";
-import { playerNews } from "./news.js?v=20261112115205";
-import { buildNewsletter } from "./newsletter.js?v=20261112115205";
-import { isChugLeague, listChugs, uploadChug, videoUrl, INTEGRITY_START_WEEK } from "./chugs.js?v=20261112115205";
-import { personaFor } from "./personas.js?v=20261112115205";
-import { loadTrades, gradeTrades, replacementLevels } from "./trades.js?v=20261112115205";
-import { loadMoves, rateMoves } from "./waivers.js?v=20261112115205";
-import { preseasonFor } from "./preseason.js?v=20261112115205";
-import { seeded } from "./util.js?v=20261112115205";
-import { esc, f1, f2, pct, rec, signed, stripTags, pairs, leagueDisplay } from "./util.js?v=20261112115205";
+import { sleeper, avatarUrl } from "./sleeper.js?v=20261112120249";
+import { buildTeams, computeAdvanced, sortStandings } from "./stats.js?v=20261112120249";
+import { scoreStats, NON_STARTING } from "./scoring.js?v=20261112120249";
+import { playerNews } from "./news.js?v=20261112120249";
+import { buildNewsletter } from "./newsletter.js?v=20261112120249";
+import { buildPreview } from "./preview.js?v=20261112120249";
+import { isChugLeague, listChugs, uploadChug, videoUrl, INTEGRITY_START_WEEK } from "./chugs.js?v=20261112120249";
+import { personaFor } from "./personas.js?v=20261112120249";
+import { loadTrades, gradeTrades, replacementLevels } from "./trades.js?v=20261112120249";
+import { loadMoves, rateMoves } from "./waivers.js?v=20261112120249";
+import { preseasonFor } from "./preseason.js?v=20261112120249";
+import { seeded } from "./util.js?v=20261112120249";
+import { esc, f1, f2, pct, rec, signed, stripTags, pairs, leagueDisplay } from "./util.js?v=20261112120249";
 
 const DEFAULT_USER = "PierceCrawley";
 const DEFAULT_LEAGUE = "Rocket Dongs"; // what first-time visitors to the bare URL see
@@ -146,7 +147,11 @@ async function loadLeague(leagueId) {
     const teams = computeAdvanced(baseTeams, doneWeeks);
     ctx = { ...ctx, league, users, baseTeams, teams, allWeeks, doneWeeks, state, currentWeek, lastDone, isCurrent, maxWeek };
     weekFor.matchups = isCurrent ? currentWeek : maxWeek;
-    weekFor.newsletter = lastDone;
+    // Preview edition: this week's matchups, once lineups exist. Wednesday through Monday it's the default;
+    // Tuesday (waivers day, the week just ended) leads with the recap.
+    const previewWeek = isCurrent && currentWeek > lastDone && allWeeks[currentWeek]?.length ? currentWeek : null;
+    ctx.previewWeek = previewWeek;
+    weekFor.newsletter = previewWeek && (new Date().getDay() !== 2 || !lastDone) ? previewWeek : lastDone;
     if (linkWeek) { weekFor[tab] = linkWeek; linkWeek = null; }
     setStatus("");
     render();
@@ -164,13 +169,13 @@ function render() {
   if (tab === "chugs" && ctx?.league && !chugOk) tab = "newsletter";
   if (tab === "preseason") tab = "power"; // merged into Power rankings
   ui.tabs.forEach((b) => b.setAttribute("aria-selected", b.dataset.tab === tab));
-  const weekTabs = { matchups: ctx?.maxWeek, newsletter: ctx?.lastDone };
+  const weekTabs = { matchups: ctx?.maxWeek, newsletter: ctx?.previewWeek || ctx?.lastDone };
   ui.week.hidden = !(tab in weekTabs);
   if (!ctx?.teams) return;
   if (tab in weekTabs) {
     const max = weekTabs[tab];
     ui.week.innerHTML = Array.from({ length: max }, (_, i) => i + 1).map((w) =>
-      `<option value="${w}">Week ${w}${ctx.isCurrent && w === ctx.currentWeek ? " (live)" : ""}</option>`).join("");
+      `<option value="${w}">Week ${w}${tab === "newsletter" ? (w === ctx.previewWeek ? " preview" : " recap") : ctx.isCurrent && w === ctx.currentWeek ? " (live)" : ""}</option>`).join("");
     ui.week.value = String(Math.min(weekFor[tab] || max, max));
   }
   syncUrl();
@@ -206,6 +211,18 @@ async function newsletter() {
   if (!W) { ui.main.innerHTML = `<p class="empty">No completed weeks yet. Check back after week 1.</p>`; return; }
   loading("Stopping the presses…");
   const season = ctx.league.season;
+  if (W === ctx.previewWeek) {
+    const [players, proj] = await Promise.all([sleeper.players().catch(() => ({})), sleeper.projections(season, W)]);
+    if (!stillOn("newsletter", W)) return;
+    ui.main.innerHTML = buildPreview({
+      league: ctx.league, teams: ctx.baseTeams, allWeeks: ctx.allWeeks, players, week: W, lastDone: ctx.lastDone, proj,
+      regEnd: (ctx.league.settings.playoff_week_start || 15) - 1,
+    });
+    ui.main.querySelector("[data-recap]")?.addEventListener("click", (e) => {
+      ui.week.value = e.currentTarget.dataset.recap; ui.week.dispatchEvent(new Event("change")); window.scrollTo(0, 0);
+    });
+    return;
+  }
   const [players, projThis, projNext] = await Promise.all([
     sleeper.players().catch(() => ({})),
     sleeper.projections(season, W),

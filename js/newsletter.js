@@ -1,9 +1,9 @@
 // Builds the weekly newsletter: TL;DR + scoreboard recaps + awards + standings roasts + preview.
-import { computeAdvanced } from "./stats.js?v=20261112115205";
-import { scoreStats, optimalScore, NON_STARTING } from "./scoring.js?v=20261112115205";
-import { avatarUrl } from "./sleeper.js?v=20261112115205";
-import { personaFor } from "./personas.js?v=20261112115205";
-import { esc, f1, f2, rec, pairs, seeded, fill, leagueDisplay } from "./util.js?v=20261112115205";
+import { computeAdvanced } from "./stats.js?v=20261112120249";
+import { scoreStats, optimalScore, NON_STARTING } from "./scoring.js?v=20261112120249";
+import { avatarUrl } from "./sleeper.js?v=20261112120249";
+import { personaFor } from "./personas.js?v=20261112120249";
+import { esc, f1, f2, rec, pairs, seeded, fill, leagueDisplay } from "./util.js?v=20261112120249";
 
 // ---------------------------------------------------------------- templates (short = readable)
 const T = {
@@ -81,7 +81,7 @@ const T = {
 const B = (s) => `<b>${esc(s)}</b>`;
 
 /** Recompute records/streaks from matchup results through week `through`. */
-function teamsThrough(baseTeams, allWeeks, through) {
+export function teamsThrough(baseTeams, allWeeks, through) {
   const m = new Map(baseTeams.map((t) => [t.rosterId, { ...t, wins: 0, losses: 0, ties: 0, pf: 0, pa: 0, results: "" }]));
   const weeks = {};
   for (let w = 1; w <= through; w++) {
@@ -108,9 +108,9 @@ function teamsThrough(baseTeams, allWeeks, through) {
   return computeAdvanced([...m.values()], weeks);
 }
 
-const standSort = (a, b) => b.winPct - a.winPct || b.pf - a.pf;
+export const standSort = (a, b) => b.winPct - a.winPct || b.pf - a.pf;
 // Rough win chance from a projected spread (fantasy weekly scores swing ~±25).
-const winChance = (spread) => 1 / (1 + Math.exp(-spread / 14));
+export const winChance = (spread) => 1 / (1 + Math.exp(-spread / 14));
 
 // ---------------------------------------------------------------- main
 /**
