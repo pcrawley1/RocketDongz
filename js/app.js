@@ -1,16 +1,18 @@
-import { sleeper, avatarUrl } from "./sleeper.js?v=20261112120249";
-import { buildTeams, computeAdvanced, sortStandings } from "./stats.js?v=20261112120249";
-import { scoreStats, NON_STARTING } from "./scoring.js?v=20261112120249";
-import { playerNews } from "./news.js?v=20261112120249";
-import { buildNewsletter } from "./newsletter.js?v=20261112120249";
-import { buildPreview } from "./preview.js?v=20261112120249";
-import { isChugLeague, listChugs, uploadChug, videoUrl, INTEGRITY_START_WEEK } from "./chugs.js?v=20261112120249";
-import { personaFor } from "./personas.js?v=20261112120249";
-import { loadTrades, gradeTrades, replacementLevels } from "./trades.js?v=20261112120249";
-import { loadMoves, rateMoves } from "./waivers.js?v=20261112120249";
-import { preseasonFor } from "./preseason.js?v=20261112120249";
-import { seeded } from "./util.js?v=20261112120249";
-import { esc, f1, f2, pct, rec, signed, stripTags, pairs, leagueDisplay } from "./util.js?v=20261112120249";
+import { sleeper, avatarUrl } from "./sleeper.js?v=20261116111131";
+import { buildTeams, computeAdvanced, sortStandings } from "./stats.js?v=20261116111131";
+import { scoreStats, NON_STARTING } from "./scoring.js?v=20261116111131";
+import { playerNews } from "./news.js?v=20261116111131";
+import { buildNewsletter } from "./newsletter.js?v=20261116111131";
+import { buildPreview } from "./preview.js?v=20261116111131";
+import { isChugLeague, listChugs, uploadChug, videoUrl, INTEGRITY_START_WEEK } from "./chugs.js?v=20261116111131";
+import { personaFor } from "./personas.js?v=20261116111131";
+import { loadTrades, gradeTrades, replacementLevels } from "./trades.js?v=20261116111131";
+import { loadMoves, rateMoves } from "./waivers.js?v=20261116111131";
+import { loadHistory, crunch } from "./history.js?v=20261116111131";
+import { waiverTalk } from "./waivertalk.js?v=20261116111131";
+import { preseasonFor } from "./preseason.js?v=20261116111131";
+import { seeded } from "./util.js?v=20261116111131";
+import { esc, f1, f2, pct, rec, signed, stripTags, pairs, leagueDisplay } from "./util.js?v=20261116111131";
 
 const DEFAULT_USER = "PierceCrawley";
 const DEFAULT_LEAGUE = "Rocket Dongs"; // what first-time visitors to the bare URL see
@@ -179,7 +181,7 @@ function render() {
     ui.week.value = String(Math.min(weekFor[tab] || max, max));
   }
   syncUrl();
-  const views = { newsletter, standings, power, matchups, scores, chugs: chugsView, trades: tradesView, waivers: waiversView };
+  const views = { newsletter, standings, power, matchups, scores, chugs: chugsView, trades: tradesView, waivers: waiversView, history: historyView };
   (views[tab] || standings)();
 }
 
@@ -848,85 +850,8 @@ async function waiversView() {
   const allDrops = rated.flatMap((x) => x.drops.map((d) => ({ ...d, x })));
   const worstDrop = [...allDrops].filter((d) => d.regret).sort((a, b) => b.since - a.since)[0];
 
-  // ---- the commentary
-  const pick = (key, arr) => arr[Math.floor(seeded(key)() * arr.length)];
-  const fill = (s, v) => s.replace(/\{(\w)\}/g, (_, k) => v[k] ?? "");
-  const LINES = {
-    a: [
-      "Credit where it's due: {T} found {P} on the wire and he's been a weapon. Annoyingly smart.",
-      "Hate to say it, but {T} nailed this one. {P} is a real starter.",
-      "{P} is the kind of pickup that wins leagues. Of course it was {T}.",
-      "Honest take: great pickup. {T} was paying attention while the rest of you were sleeping.",
-    ],
-    b: [
-      "Solid pickup. {P} is a legit fantasy body and {T} knows it.",
-      "{T} grabbed {P} and he's actually useful. No notes.",
-      "Respectable move by {T}. {P} pulls his weight.",
-    ],
-    c: [
-      "{P}. A bench body. Riveting stuff from {T}.",
-      "{T} added {P}, who will now sit on the bench and think about what he's done.",
-      "{P} is roster filler. {T} needed someone to hold the clipboard.",
-      "Meh. {P} is a guy. {T} added a guy.",
-    ],
-    f: [
-      "{T} picked up {P} and got {S} points for the trouble. The waiver wire is free and they still overpaid.",
-      "{P}? Did {T} sort by 'most available'?",
-      "{T} added {P}. Bold strategy: picking up players who don't score.",
-      "{P} has been a ghost. {T} is apparently into ghosts.",
-    ],
-    earlyGood: [
-      "{T} added {P}, and the projections like it. Hasn't played for them yet, so don't get cocky.",
-      "On paper, {P} is a nice grab by {T}. We'll see if paper scores.",
-    ],
-    earlyBad: [
-      "{T} added {P}, who's projected for roughly nothing. Bold.",
-      "{P}? The projections don't love it, {T}. Neither do we.",
-      "{T} grabbed {P}. Even Sleeper's projections are shrugging.",
-    ],
-    tbd: [
-      "{T} added {P}. Jury's still out. Give it a week before we roast.",
-      "{P} to {T}. No data yet, so no roast. Yet.",
-    ],
-    cutFast: [
-      "{T} added {P}, then cut him a week later. He didn't even get to unpack.",
-      "Catch and release. {T} treated {P} like a fish.",
-    ],
-    bigBid: [" And they paid {B} FAAB for it. Brutal.", " {B} of FAAB, gone. Should've bought a beer instead."],
-    goodBid: [" Worth every penny of the {B}.", " {B} well spent. Annoying."],
-    regret: [
-      " And to make room they cut {D}, who's scored {X} since{O}. 🤡",
-      " Meanwhile {D} has put up {X} since getting cut{O}. Oops.",
-    ],
-    dropOnly: ["{T} just cut {D}. Addition by subtraction.", "{T} released {D} back into the wild. No one noticed."],
-    dropOnlyRegret: ["{T} cut {D} for nothing. {D} has scored {X} since{O}. 🤡", "{T} dropped {D} into the void and he's scored {X} since{O}. Tremendous."],
-  };
-  const quip = (x) => {
-    const T = `<b>${esc(team(x.rid).team)}</b>`;
-    const key = `ww-${x.m.transaction_id}`;
-    const regret = x.drops.find((d) => d.regret);
-    const D = regret && pname(regret.pid);
-    const O = regret?.now && regret.now !== x.rid ? ` for ${esc(team(regret.now).team)}` : "";
-    const X = regret && `<b>${f1(regret.since)}</b>`;
-    if (!x.best) {
-      const d = x.drops[0];
-      if (!d) return "";
-      return regret ? fill(pick(key, LINES.dropOnlyRegret), { T, D, X, O }) : fill(pick(key, LINES.dropOnly), { T, D: pname(d.pid) });
-    }
-    const a = x.best;
-    const P = pname(a.pid), S = `<b>${f1(a.pts)}</b>`;
-    const persona = personaFor(team(x.rid).owner);
-    let line;
-    if (a.cutFast) line = fill(pick(key, LINES.cutFast), { T, P });
-    else if (persona?.waiver?.length && (a.tier === "f" || a.tier === "c")) line = fill(pick(key, persona.waiver), { N: `<b>${esc(persona.nick)}</b>`, P });
-    else if (!a.weeksHeld && a.tier !== "tbd") line = fill(pick(key, LINES[a.tier === "a" || a.tier === "b" ? "earlyGood" : "earlyBad"]), { T, P });
-    else line = fill(pick(key, LINES[a.tier]), { T, P, S });
-    const B = x.bid ? `<b>$${x.bid}</b>` : "";
-    if (x.bid >= 10 && (a.tier === "f" || a.cutFast)) line += fill(pick(key + "b", LINES.bigBid), { B });
-    else if (x.bid >= 10 && a.tier === "a") line += fill(pick(key + "b", LINES.goodBid), { B });
-    if (regret) line += fill(pick(key + "r", LINES.regret), { D, X, O });
-    return line;
-  };
+  // ---- the commentary (fact-driven, no repeats; see waivertalk.js)
+  const quip = waiverTalk({ rated, moves, team, players, nextProj: projs[0], allWeeks: ctx.allWeeks, lastDone: ctx.lastDone });
 
   // ---- cards
   const show = rated.filter((x) => wwFilter === "all" || String(x.rid) === wwFilter);
@@ -972,4 +897,101 @@ async function waiversView() {
     ${list || `<p class="note">No moves for this team. Set it and forget it, apparently.</p>`}
     <p class="note"><b>How ratings work:</b> a pickup is judged on points per game, combining what he's scored for that team since the move and Sleeper's projection for weeks ${ctx.lastDone + 1}–${regEnd} (league scoring) if he's still on the roster, compared with a waiver-level player at his position. 🔥 Hit = 35%+ better than replacement, 👍 Solid = at or above it, 🤷 Filler = a bit below, 🗑️ Dud = well below it, ❔ = no games or projections yet. A drop gets 🤡 if the cut player has scored 15+ points since and is clearly better than replacement. Purple numbers are projected points still to come.</p>`;
   $("#ww-team").addEventListener("change", (e) => { wwFilter = e.target.value; waiversView(); });
+}
+
+// ---------- 📜 league history ----------
+let histSeason = "all";
+let histCache = null; // { leagueId, seasons }
+async function historyView() {
+  const lid = ctx.league.league_id;
+  if (histCache?.leagueId !== lid) {
+    loading("Dusting off the archives…");
+    const seasons = await loadHistory(lid, ctx.lastDone, (n) => {
+      if (tab === "history") ui.main.innerHTML = header() + `<p class="note">Dusting off the archives… ${n} season${n === 1 ? "" : "s"} loaded</p>`;
+    });
+    histCache = { leagueId: lid, seasons };
+  }
+  const players = await sleeper.players().catch(() => ({}));
+  if (tab !== "history" || ctx.league.league_id !== lid) return;
+  const all = histCache.seasons;
+  if (histSeason !== "all" && !all.some((s) => s.season === histSeason)) histSeason = "all";
+  const pick = histSeason === "all" ? all : all.filter((s) => s.season === histSeason);
+  const H = crunch(pick);
+  const full = histSeason === "all" ? H : crunch(all);
+
+  // Latest name/avatar for each manager (owner user id).
+  const who = new Map();
+  for (const s of [...all].reverse()) for (const [oid, u] of Object.entries(s.users)) who.set(oid, u);
+  const nameOf = (oid) => who.get(oid)?.team || who.get(oid)?.name || "Former manager";
+  const handle = (oid) => who.get(oid)?.name || "";
+  const avOf = (oid) => { const u = avatarUrl(who.get(oid)?.avatar); return u ? `<img class="av" src="${u}" alt="" loading="lazy">` : `<span class="av ph"></span>`; };
+  const pl = (pid) => players[pid] || { name: pid, pos: pid.length <= 3 ? "DEF" : "", team: "" };
+  const when = (x) => `${x.playoff ? "🏆 " : ""}Wk ${x.week}${histSeason === "all" ? ` · ${x.season}` : ""}`;
+  const first = all.at(-1)?.season;
+
+  const champs = all.map((s) => full.summaries.find((x) => x.season === s.season)).filter((x) => x?.champ);
+  const trophyCase = champs.map((c) => `<div class="hx-trophy">${avOf(c.champ.oid)}<div><b>${c.season}</b><span>${esc(c.champ.team)}</span></div></div>`).join("");
+
+  const seasonCards = H.summaries.map((s) => {
+    const row = (icon, label, t, val) => t ? `<div class="hx-row"><span class="hx-ic">${icon}</span><span class="hx-lbl">${label}</span><span class="hx-who">${esc(t.team)}${val ? ` <span class="dim">${val}</span>` : ""}</span></div>` : "";
+    return `<article class="hx-season">
+      <div class="hx-season-h"><b>${s.season}</b>${s.complete ? "" : `<span class="chip">In progress</span>`}</div>
+      ${row("🏆", "Champion", s.champ)}
+      ${row("🥈", "Runner-up", s.runner)}
+      ${row("👑", "Best record", s.top, s.top && rec(s.top.rec.w, s.top.rec.l, s.top.rec.t))}
+      ${row("💥", "Most points", s.pfLead, s.pfLead && f1(s.pfLead.pf))}
+      ${row("🚽", "Last place", s.last, s.last && rec(s.last.rec.w, s.last.rec.l, s.last.rec.t))}
+      ${row("🚀", "Top week", s.bestWeek, s.bestWeek && `${f1(s.bestWeek.pts)} · wk ${s.bestWeek.week}`)}
+    </article>`;
+  }).join("");
+
+  const spikeRow = (x, i) => {
+    const p = pl(x.pid);
+    return `<li class="hx-spike ${i < 3 ? "top" : ""}"><span class="hx-rank">${i + 1}</span>
+      <div class="hx-main"><b>${esc(p.name)}</b> <span class="dim">${esc(p.pos)}</span><div class="dim">${esc(x.team)} · ${when(x)}</div></div>
+      <span class="hx-pts">${f2(x.pts)}</span></li>`;
+  };
+  const teamRow = (x, i) => `<li class="hx-spike ${i < 3 ? "top" : ""}"><span class="hx-rank">${i + 1}</span>${avOf(x.oid)}
+      <div class="hx-main"><b>${esc(x.team)}</b><div class="dim">${esc(handle(x.oid))} · ${when(x)}</div></div><span class="hx-pts">${f2(x.pts)}</span></li>`;
+  const gameRow = (g, i) => `<li class="hx-spike"><span class="hx-rank">${i + 1}</span>
+      <div class="hx-main"><b>${esc(g.win.team)}</b> ${f1(g.win.pts)} <span class="dim">def.</span> <b>${esc(g.lose.team)}</b> ${f1(g.lose.pts)}<div class="dim">${when(g)}</div></div>
+      <span class="hx-pts">${g.margin < 1 ? f2(g.margin) : f1(g.margin)}</span></li>`;
+  const list = (title, sub, rows) => rows.length ? `<section class="hx-list card"><div class="hx-list-h"><b>${title}</b><span class="dim">${sub}</span></div><ol>${rows.join("")}</ol></section>` : "";
+
+  const mgrs = [...H.managers].filter((m) => m.w + m.l + m.t > 0)
+    .sort((a, b) => b.titles.length - a.titles.length || (b.w / Math.max(1, b.w + b.l)) - (a.w / Math.max(1, a.w + a.l)));
+  const mgrRows = mgrs.map((m) => `<tr>
+      <td class="l"><div class="team">${avOf(m.oid)}<div><div class="tname">${esc(nameOf(m.oid))}</div><div class="owner">${esc(handle(m.oid))}</div></div></div></td>
+      <td>${m.titles.length ? `${"🏆".repeat(m.titles.length)}<div class="dim">${m.titles.join(", ")}</div>` : "—"}</td>
+      <td>${rec(m.w, m.l, m.t)}</td><td>${((m.w + m.t / 2) / Math.max(1, m.w + m.l + m.t) * 100).toFixed(0)}%</td>
+      <td>${m.playoffs}/${m.seasons}</td><td>${f1(m.pf / Math.max(1, m.w + m.l + m.t))}</td><td>${m.highs || "—"}</td></tr>`).join("");
+
+  const chips = ["all", ...all.map((s) => s.season)].map((s) =>
+    `<button type="button" class="hx-chip ${s === histSeason ? "on" : ""}" data-season="${s}">${s === "all" ? "All-time" : s}</button>`).join("");
+
+  ui.main.innerHTML = header() + `
+    <div class="trade-hero hx-hero">
+      <div class="trade-title">📜 League History</div>
+      <p>Est. ${first} · ${all.length} season${all.length === 1 ? "" : "s"} · ${champs.length} champion${champs.length === 1 ? "" : "s"} crowned</p>
+      ${trophyCase ? `<div class="hx-trophies">${trophyCase}</div>` : ""}
+    </div>
+    <div class="hx-chips">${chips}</div>
+    <h3 class="section-h">🔥 Player spike weeks</h3>
+    <div class="hx-grid">
+      ${list("Biggest games", "started players", H.playerSpikes.slice(0, 15).map(spikeRow))}
+      ${list("🪑 Left on the bench", "the ones that got away", H.benchSpikes.map(spikeRow))}
+    </div>
+    <h3 class="section-h">🚀 Team spike weeks</h3>
+    <div class="hx-grid">
+      ${list("Highest scores", "", H.teamHighs.map(teamRow))}
+      ${list("🧊 Lowest scores", "regular season", H.teamLows.map(teamRow))}
+      ${list("💀 Biggest blowouts", "margin", H.blowouts.map(gameRow))}
+      ${list("😬 Closest games", "margin", H.nailbiters.map(gameRow))}
+    </div>
+    <h3 class="section-h">🏛️ ${histSeason === "all" ? "All-time managers" : `${histSeason} managers`}</h3>
+    <div class="card scroll"><table><thead><tr><th class="l">Manager</th><th>Titles</th><th>Record</th><th>Win %</th><th title="Playoff appearances / seasons">Playoffs</th><th title="Points per game, regular season">PPG</th><th title="Times in the league's top 25 scores in this view">Top-25 wks</th></tr></thead><tbody>${mgrRows}</tbody></table></div>
+    <h3 class="section-h">🗓️ Season by season</h3>
+    <div class="hx-seasons">${seasonCards}</div>
+    <p class="note">Records are regular season only; 🏆 marks playoff weeks. Team names are what each manager called their team that season. The current season counts completed weeks only.</p>`;
+  ui.main.querySelectorAll(".hx-chip").forEach((b) => b.addEventListener("click", () => { histSeason = b.dataset.season; historyView(); }));
 }

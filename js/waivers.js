@@ -2,7 +2,7 @@
 // rated honestly. A pickup is judged on points per game (what he's scored for that team plus
 // what he's projected for the rest of the regular season) vs a waiver-level player at his position.
 // A drop is judged on what the cut player has scored since leaving.
-import { sleeper } from "./sleeper.js?v=20261112120249";
+import { sleeper } from "./sleeper.js?v=20261116111131";
 
 /** Completed waiver + free-agent moves this season, newest first. */
 export async function loadMoves(leagueId, maxWeek) {
@@ -40,13 +40,14 @@ export function rateMoves(moves, allWeeks, lastDone, { currentRosters, ros, actu
     const bid = m.settings?.waiver_bid ?? null;
 
     const adds = Object.entries(m.adds || {}).filter(([, r]) => r === rid).map(([pid]) => {
-      let pts = 0, started = 0, games = 0, weeksHeld = 0;
+      let pts = 0, started = 0, games = 0, weeksHeld = 0, bestPts = 0, bestW = 0;
       for (let w = Math.max(1, leg); w <= lastDone; w++) {
         const row = rowFor(w, rid);
         if (!row || !(row.players || []).includes(pid)) continue;
         weeksHeld++;
         const p = row.players_points?.[pid] ?? 0;
         pts += p;
+        if (p > bestPts) { bestPts = p; bestW = w; }
         if (p !== 0) games++;
         if ((row.starters || []).includes(pid)) started += p;
       }
@@ -58,7 +59,7 @@ export function rateMoves(moves, allWeeks, lastDone, { currentRosters, ros, actu
       const score = r > 0 ? ppg / r : ppg > 0 ? 1 : 0;
       const [, emoji, label, tier] = g ? RATINGS.find(([min]) => score >= min) : [0, "❔", "TBD", "tbd"];
       const value = Math.max(0, pts - r * games) + Math.max(0, future.pts - r * future.games);
-      return { pid, pts, started, games, weeksHeld, kept, ros: future.pts, ppg, score, emoji, label, tier, value,
+      return { pid, pts, started, bench: pts - started, bestPts, bestW, games, weeksHeld, kept, ros: future.pts, ppg, score, emoji, label, tier, value,
         cutFast: !kept && weeksHeld <= 1 && lastDone > leg };
     });
 

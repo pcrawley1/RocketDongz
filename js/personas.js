@@ -42,6 +42,8 @@ export const PERSONAS = {
     waiver: [
       "{N} picked up {P} just to have someone new to watch from the corner.",
       "{N} brought {P} home. He'll be watching him score for other teams by Sunday.",
+      "{N} added {P}. Another guy for him to watch from the corner.",
+      "{P} to {N}. Somewhere, Adam22 nods approvingly.",
     ],
     chug: [
       "{N} has watched enough. Time to chug.",
@@ -84,6 +86,9 @@ export const PERSONAS = {
     waiver: [
       "Forrest added {P}. Had to stand on a chair to reach the waiver wire.",
       "{P} joins Forrest's squad and is immediately taller than the owner.",
+      "Forrest grabbed {P}. Regulation-size manager, regulation-size pickup.",
+      "{P} to Forrest. Zev says he'll fit in the ball bag with the rest of them.",
+      "Forrest added {P} between inflation checks.",
     ],
     chug: [
       "Careful, Forrest. A full can is half your body weight.",

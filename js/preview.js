@@ -1,12 +1,12 @@
 // Preview edition of the Gazette: from Wednesday on, the newsletter looks ahead to this week's
 // matchups. It covers the stakes (playoff math), who each manager is leaning on, injury sweats,
 // revenge games, rematches, and live scores once games kick off.
-import { scoreStats, NON_STARTING } from "./scoring.js?v=20261112120249";
-import { avatarUrl } from "./sleeper.js?v=20261112120249";
-import { personaFor } from "./personas.js?v=20261112120249";
-import { isChugLeague } from "./chugs.js?v=20261112120249";
-import { teamsThrough, standSort, winChance } from "./newsletter.js?v=20261112120249";
-import { esc, f1, rec, pairs, seeded, fill, leagueDisplay } from "./util.js?v=20261112120249";
+import { scoreStats, NON_STARTING } from "./scoring.js?v=20261116111131";
+import { avatarUrl } from "./sleeper.js?v=20261116111131";
+import { personaFor } from "./personas.js?v=20261116111131";
+import { isChugLeague } from "./chugs.js?v=20261116111131";
+import { teamsThrough, standSort, winChance } from "./newsletter.js?v=20261116111131";
+import { esc, f1, rec, pairs, seeded, fill, leagueDisplay } from "./util.js?v=20261116111131";
 
 const ord = (n) => n + (["th", "st", "nd", "rd"][((n % 100) - 20) % 10] || ["th", "st", "nd", "rd"][n % 100] || "th");
 
@@ -16,34 +16,92 @@ const L = {
     "Week {W} Preview: {A} and {B} Settle It Like Adults (Badly)",
     "Clear Your Sunday: {A} vs {B} Headlines Week {W}",
     "{A} vs {B}: Somebody Is Getting Embarrassed in Week {W}",
+    "Week {W}: {A} and {B} Have Been Talking. Now It's Time to Score.",
   ],
   headlineDesperate: [
     "Week {W}: {n} Teams Can't Afford to Lose, and {A} vs {B} Leads the Way",
-    "Desperation Week: {n} Must-Win Teams and {A} vs {B} Up Top",
+    "Desperation Week: {n} Teams Sweating, {A} vs {B} Up Top",
+    "Week {W}: Playoff Panic Sets In for {n} Teams. {A} vs {B} Is the Main Event.",
   ],
   mustWinBoth: [
     "Loser of this one can start planning the draft party.",
     "Both teams need it. Only one gets it. Popcorn.",
     "Two desperate teams, one W. Elimination game energy.",
+    "Whoever loses this one gets to spend December checking other people's scores.",
   ],
   mustWin: [
-    "{T} is {gb} out with {left} to play. Lose this and it's over-ish.",
-    "Must-win for {T}. Their season is on a ventilator.",
-    "{T} needs this one. Badly. The group chat knows it.",
+    "{T} is {gb} back of the playoff line with {left} to play. Lose this and it's over-ish.",
+    "Must-win for {T} at {rec}. Their season is on a ventilator.",
+    "{T} ({rec}, {rank}) needs this one. Badly. The group chat knows it.",
+    "{T} sits {gb} out of a playoff spot. Every week is a playoff game now.",
+    "At {rec}, {T} is out of mulligans.",
+    "{T} is {rank} and {gb} back. Time to start praying to the fantasy gods.",
   ],
   spoiler: [
-    "{T} is playing for pride, which means they have nothing to lose and everything to ruin.",
+    "{T} is playing for pride, which means nothing to lose and everything to ruin.",
     "{T} is out of it but would love nothing more than to wreck someone's season.",
+    "{T} is eliminated and in full spoiler mode.",
   ],
-  bubbleIn: ["{T} holds a playoff spot, barely. A loss here and they could be on the outside looking in.", "{T} is clinging to the playoff line by their fingernails."],
-  bubbleOut: ["{T} is tied with the playoff line but losing the points tiebreaker. Needs this one.", "{T} is right on the doorstep of a playoff spot. Win and knock."],
-  coinflip: ["Coin flip. Projections have it within {sp}.", "Too close to call: {sp} points separate them on paper."],
-  favored: ["{F} is favored by {sp}.", "Sleeper likes {F} by {sp}."],
-  bigFav: ["{F} is favored by {sp}. {D}'s best hope is a meteor.", "{F} by {sp}. {D} should aim for 'scoring points'."],
-  needBoom: ["To pull the upset, {D} needs {P} to go off.", "{D}'s whole week rides on {P} having a career day."],
-  favNeed: ["{F} just needs {P} to do his usual thing.", "{F} is counting on {P} to keep it boring."],
-  rematch: ["Rematch of week {w}, when {Wn} won {s}.", "They met in week {w}: {Wn} won {s}. Revenge is on the menu."],
-  revenge: ["🔥 Revenge game: {P} faces his old team."],
+  bubbleIn: [
+    "{T} holds the {rank} spot at {rec}, barely. A loss and they could slide out.",
+    "{T} is clinging to the playoff line by their fingernails at {rec}.",
+    "{T} is in, for now. The team right behind them is breathing down their neck.",
+    "{T} ({rec}) has a playoff seat but it's a folding chair.",
+  ],
+  bubbleOut: [
+    "{T} is tied with the playoff line but losing the points tiebreaker. Needs this one.",
+    "{T} is right on the doorstep of a playoff spot at {rec}. Win and knock.",
+    "{T} sits {rank} at {rec}, one good week from jumping back in.",
+  ],
+  coinflip: [
+    "Coin flip. Projections have it within {sp}.",
+    "Too close to call: {sp} points separate them on paper.",
+    "Sleeper can't pick a winner either. {sp} apart.",
+    "A {sp}-point projected margin. Somebody's kicker decides this.",
+  ],
+  favored: [
+    "{F} is favored by {sp}.",
+    "Sleeper likes {F} by {sp}.",
+    "{F} goes in as a {sp}-point favorite.",
+    "The projections give {F} a {sp}-point edge.",
+    "{F} by {sp} on paper.",
+  ],
+  bigFav: [
+    "{F} is favored by {sp}. {D}'s best hope is a meteor.",
+    "{F} by {sp}. {D} should aim for 'scoring points'.",
+    "A {sp}-point spread. {D} might want to check if their lineup is set.",
+    "{F} by {sp}. This one could be over by Sunday lunch.",
+    "{sp} points. The projections are basically asking {D} to forfeit.",
+  ],
+  // {P} = player html, {stat} = his numbers, {opp} = NFL opponent
+  needBoom: [
+    "To pull the upset, {D} needs {P} {stat} to go off{vs}.",
+    "{D}'s whole week rides on {P} {stat}{vs}.",
+    "If {D} wins this, it's because {P} {stat} went nuclear{vs}.",
+    "{D}'s path to victory: {P} {stat} plays the game of his life{vs}.",
+    "{D} needs a ceiling game from {P} {stat}{vs}. A big one.",
+  ],
+  favNeed: [
+    "{F} just needs {P} {stat} to do his usual thing{vs}.",
+    "{F} is counting on {P} {stat} to keep it boring{vs}.",
+    "{P} {stat} is {F}'s safety blanket{vs}.",
+    "As long as {P} {stat} shows up{vs}, {F} should be fine.",
+    "{F}'s plan: hand it to {P} {stat}{vs} and nap.",
+  ],
+  coldStar: [
+    "{X}'s {P} put up just {last} last week. Need a bounce-back{vs}.",
+    "{P} laid a {last} egg for {X} last week. Redemption{vs}?",
+  ],
+  hotStar: [
+    "{P} is coming off {last} for {X}. Can he do it again{vs}?",
+    "{X}'s {P} just dropped {last}. Ride the hot hand{vs}.",
+  ],
+  rematch: [
+    "Rematch of week {w}, when {Wn} won {s}.",
+    "They met in week {w}: {Wn} won {s}. Revenge is on the menu.",
+    "Round two. {Wn} took week {w}, {s}.",
+    "{Ln} still remembers week {w} ({s}). Payback time.",
+  ],
 };
 
 /** Playoff stakes for each team, using wins and then points for. */
@@ -84,7 +142,12 @@ export function buildPreview(d) {
   const sc = league.scoring_settings || {};
   const startSlots = league.roster_positions.filter((s) => !NON_STARTING.has(s));
   const seed = `${league.league_id}-pv-${W}`;
-  const pick = (arr, key) => arr[Math.floor(seeded(seed + key)() * arr.length)];
+  const used = new Set();
+  const pick = (arr, key) => { // never repeat a line on the page
+    const start = Math.floor(seeded(seed + key)() * arr.length);
+    for (let i = 0; i < arr.length; i++) { const l = arr[(start + i) % arr.length]; if (!used.has(l)) { used.add(l); return l; } }
+    return ""; // exhausted: skip the sentence rather than repeat it
+  };
   const now = teamsThrough(d.teams, allWeeks, lastDone);
   const standings = [...now].sort(standSort);
   const byId = new Map(now.map((t) => [t.rosterId, t]));
@@ -145,30 +208,70 @@ export function buildPreview(d) {
     return null;
   };
 
+  // Season line for a player from this year's box scores (any roster that had him).
+  const seasonOf = (pid) => {
+    let tot = 0, g = 0, last = null, high = 0;
+    for (let w = 1; w < W; w++) {
+      for (const r of allWeeks[w] || []) {
+        const p = r.players_points?.[pid];
+        if (p == null) continue;
+        if (p !== 0) { tot += p; g++; high = Math.max(high, p); }
+        if (w === W - 1) last = p;
+        break;
+      }
+    }
+    return { avg: g ? tot / g : 0, g, last, high };
+  };
+  const statOf = (pid) => {
+    const s = seasonOf(pid);
+    if (!s.g) return "";
+    return `<span class="dim">(${f1(s.avg)}/gm${s.last != null ? `, ${f1(s.last)} last week` : ""})</span>`;
+  };
+  const vsOf = (pid) => (proj[pid]?.opponent ? ` against ${esc(proj[pid].opponent)}` : "");
+
   const storyline = (g, key) => {
     const out = [];
     const ka = g.sa?.key, kb = g.sb?.key;
     const fav = g.a.projTotal >= g.b.projTotal ? g.a : g.b, dog = fav === g.a ? g.b : g.a;
     const F = Bn(fav.r.roster_id), D = Bn(dog.r.roster_id), sp = `<b>${f1(g.sp)}</b>`;
+    const tv = (side, s) => {
+      const t = byId.get(side.r.roster_id);
+      return { T: Bn(side.r.roster_id), gb: `${s.gb} game${s.gb === 1 ? "" : "s"}`, left: `${left} game${left === 1 ? "" : "s"}`,
+        rec: t ? rec(t.wins, t.losses, t.ties) : "", rank: ord(s.rank) };
+    };
     if (ka === "must" && kb === "must") out.push(pick(L.mustWinBoth, key + "mb"));
-    else for (const [side, s] of [[g.a, g.sa], [g.b, g.sb]]) {
-      const T = Bn(side.r.roster_id);
-      if (s?.key === "must") out.push(fill(pick(L.mustWin, key + side.r.roster_id), { T, gb: `${s.gb} game${s.gb === 1 ? "" : "s"}`, left: `${left} game${left === 1 ? "" : "s"}` }));
-      else if (s?.key === "bubble") out.push(fill(pick(s.rank <= (league.settings.playoff_teams || 0) ? L.bubbleIn : L.bubbleOut, key + side.r.roster_id), { T }));
-      else if (s?.key === "out" && ["must", "bubble"].includes((side === g.a ? g.sb : g.sa)?.key)) out.push(fill(pick(L.spoiler, key + side.r.roster_id), { T }));
+    else for (const [side, s, o] of [[g.a, g.sa, g.sb], [g.b, g.sb, g.sa]]) {
+      if (s?.key === "must") out.push(fill(pick(L.mustWin, key + side.r.roster_id), tv(side, s)));
+      else if (s?.key === "bubble") out.push(fill(pick(s.rank <= (league.settings.playoff_teams || 0) ? L.bubbleIn : L.bubbleOut, key + side.r.roster_id), tv(side, s)));
+      else if (s?.key === "out" && ["must", "bubble"].includes(o?.key)) out.push(fill(pick(L.spoiler, key + side.r.roster_id), tv(side, s)));
     }
     if (g.sp < 5) out.push(fill(pick(L.coinflip, key + "c"), { sp }));
     else if (g.sp >= 20) out.push(fill(pick(L.bigFav, key + "f"), { F, D, sp }));
     else out.push(fill(pick(L.favored, key + "f"), { F, sp }));
-    if (g.sp >= 5 && dog.leaning[0]) out.push(fill(pick(L.needBoom, key + "n"), { D, P: `<b>${esc(pname(dog.leaning[0]))}</b>` }));
-    else if (fav.leaning[0]) out.push(fill(pick(L.favNeed, key + "n"), { F, P: `<b>${esc(pname(fav.leaning[0]))}</b>` }));
+    const star = g.sp >= 5 ? dog : fav;
+    const pid = star.leaning[0];
+    if (pid) {
+      const P = `<b>${esc(pname(pid))}</b>`;
+      out.push(fill(pick(star === dog ? L.needBoom : L.favNeed, key + "n"), { D, F, P, stat: statOf(pid), vs: vsOf(pid) }).replace(/\s+(?=[.,?])/g, "").replace(/ {2,}/g, " "));
+    }
+    // A hot or cold star on the other side (based on last week vs his average).
+    const other = star === g.a ? g.b : g.a;
+    const op = other.leaning[0];
+    if (op) {
+      const s = seasonOf(op);
+      if (s.last != null && s.g >= 3) {
+        const X = Bn(other.r.roster_id), P = `<b>${esc(pname(op))}</b>`, last = `<b>${f1(s.last)}</b>`;
+        if (s.last >= s.avg * 1.5 && s.last >= 20) out.push(fill(pick(L.hotStar, key + "h"), { X, P, last, vs: vsOf(op) }));
+        else if (s.last > 0 && s.last <= s.avg * 0.5) out.push(fill(pick(L.coldStar, key + "h"), { X, P, last, vs: vsOf(op) }));
+      }
+    }
     const m = lastMeeting(g.a.r.roster_id, g.b.r.roster_id);
-    if (m) out.push(fill(pick(L.rematch, key + "r"), { w: m.w, Wn: Bn(m.winner), s: m.s }));
+    if (m) out.push(fill(pick(L.rematch, key + "r"), { w: m.w, Wn: Bn(m.winner), Ln: Bn(m.winner === g.a.r.roster_id ? g.b.r.roster_id : g.a.r.roster_id), s: m.s }));
     for (const side of [g.a, g.b]) {
       const p = personaFor(byId.get(side.r.roster_id)?.owner);
       if (p?.preview?.length) out.push(fill(pick(p.preview, key + "p"), { N: `<b>${esc(p.nick)}</b>` }));
     }
-    return out.join(" ");
+    return out.filter(Boolean).join(" ");
   };
 
   const sideHtml = (s, st, chance, right) => {

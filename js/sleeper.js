@@ -122,3 +122,9 @@ function loadPlayers() {
   })();
   return playersPromise;
 }
+
+/** Permanent IndexedDB cache for data that never changes (completed seasons). */
+export const archive = {
+  get: (key) => idbGet(key).catch(() => null),
+  set: (key, val) => idbSet(key, val).catch(() => {}),
+};
