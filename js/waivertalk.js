@@ -2,8 +2,8 @@
 // has been passed around, who cut him, his best week, points wasted on the bench, injuries, age,
 // next opponent, FAAB price, and how the add compares with the drop. An honest verdict follows, and
 // no line repeats on the page.
-import { esc, f1, seeded, fill } from "./util.js?v=20261116111131";
-import { personaFor } from "./personas.js?v=20261116111131";
+import { esc, f1, seeded, fill } from "./util.js?v=20261116112109";
+import { personaFor } from "./personas.js?v=20261116112109";
 
 const V = {
   // verdicts by tier, honest first, mean second

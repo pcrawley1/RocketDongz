@@ -494,3 +494,7 @@ th.zev-col { color: var(--purple); }
 .hx-ic { width: 20px; flex: none; }
 .hx-lbl { color: var(--dim); width: 92px; flex: none; font-size: 13px; }
 .hx-who { flex: 1; min-width: 0; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hx-handle { font-size: 12px; font-weight: 400; color: var(--dim); }
+.hx-trophy .hx-tr-h { font-size: 11px; opacity: .75; }
+.hx-main > b + .hx-handle { margin-right: 2px; }
+.hx-main .dim { white-space: normal; }

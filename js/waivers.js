@@ -2,7 +2,7 @@
 // rated honestly. A pickup is judged on points per game (what he's scored for that team plus
 // what he's projected for the rest of the regular season) vs a waiver-level player at his position.
 // A drop is judged on what the cut player has scored since leaving.
-import { sleeper } from "./sleeper.js?v=20261116111131";
+import { sleeper } from "./sleeper.js?v=20261116112109";
 
 /** Completed waiver + free-agent moves this season, newest first. */
 export async function loadMoves(leagueId, maxWeek) {

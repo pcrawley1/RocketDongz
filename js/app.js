@@ -1,18 +1,18 @@
-import { sleeper, avatarUrl } from "./sleeper.js?v=20261116111131";
-import { buildTeams, computeAdvanced, sortStandings } from "./stats.js?v=20261116111131";
-import { scoreStats, NON_STARTING } from "./scoring.js?v=20261116111131";
-import { playerNews } from "./news.js?v=20261116111131";
-import { buildNewsletter } from "./newsletter.js?v=20261116111131";
-import { buildPreview } from "./preview.js?v=20261116111131";
-import { isChugLeague, listChugs, uploadChug, videoUrl, INTEGRITY_START_WEEK } from "./chugs.js?v=20261116111131";
-import { personaFor } from "./personas.js?v=20261116111131";
-import { loadTrades, gradeTrades, replacementLevels } from "./trades.js?v=20261116111131";
-import { loadMoves, rateMoves } from "./waivers.js?v=20261116111131";
-import { loadHistory, crunch } from "./history.js?v=20261116111131";
-import { waiverTalk } from "./waivertalk.js?v=20261116111131";
-import { preseasonFor } from "./preseason.js?v=20261116111131";
-import { seeded } from "./util.js?v=20261116111131";
-import { esc, f1, f2, pct, rec, signed, stripTags, pairs, leagueDisplay } from "./util.js?v=20261116111131";
+import { sleeper, avatarUrl } from "./sleeper.js?v=20261116112109";
+import { buildTeams, computeAdvanced, sortStandings } from "./stats.js?v=20261116112109";
+import { scoreStats, NON_STARTING } from "./scoring.js?v=20261116112109";
+import { playerNews } from "./news.js?v=20261116112109";
+import { buildNewsletter } from "./newsletter.js?v=20261116112109";
+import { buildPreview } from "./preview.js?v=20261116112109";
+import { isChugLeague, listChugs, uploadChug, videoUrl, INTEGRITY_START_WEEK } from "./chugs.js?v=20261116112109";
+import { personaFor } from "./personas.js?v=20261116112109";
+import { loadTrades, gradeTrades, replacementLevels } from "./trades.js?v=20261116112109";
+import { loadMoves, rateMoves } from "./waivers.js?v=20261116112109";
+import { loadHistory, crunch } from "./history.js?v=20261116112109";
+import { waiverTalk } from "./waivertalk.js?v=20261116112109";
+import { preseasonFor } from "./preseason.js?v=20261116112109";
+import { seeded } from "./util.js?v=20261116112109";
+import { esc, f1, f2, pct, rec, signed, stripTags, pairs, leagueDisplay } from "./util.js?v=20261116112109";
 
 const DEFAULT_USER = "PierceCrawley";
 const DEFAULT_LEAGUE = "Rocket Dongs"; // what first-time visitors to the bare URL see
@@ -924,16 +924,21 @@ async function historyView() {
   for (const s of [...all].reverse()) for (const [oid, u] of Object.entries(s.users)) who.set(oid, u);
   const nameOf = (oid) => who.get(oid)?.team || who.get(oid)?.name || "Former manager";
   const handle = (oid) => who.get(oid)?.name || "";
+  // "Team name (username)", since team names change from year to year.
+  const tn = (t, bold = false) => {
+    const h = handle(t.oid), name = bold ? `<b>${esc(t.team)}</b>` : esc(t.team);
+    return h && h.toLowerCase() !== String(t.team).toLowerCase() ? `${name} <span class="hx-handle">(${esc(h)})</span>` : name;
+  };
   const avOf = (oid) => { const u = avatarUrl(who.get(oid)?.avatar); return u ? `<img class="av" src="${u}" alt="" loading="lazy">` : `<span class="av ph"></span>`; };
   const pl = (pid) => players[pid] || { name: pid, pos: pid.length <= 3 ? "DEF" : "", team: "" };
   const when = (x) => `${x.playoff ? "🏆 " : ""}Wk ${x.week}${histSeason === "all" ? ` · ${x.season}` : ""}`;
   const first = all.at(-1)?.season;
 
   const champs = all.map((s) => full.summaries.find((x) => x.season === s.season)).filter((x) => x?.champ);
-  const trophyCase = champs.map((c) => `<div class="hx-trophy">${avOf(c.champ.oid)}<div><b>${c.season}</b><span>${esc(c.champ.team)}</span></div></div>`).join("");
+  const trophyCase = champs.map((c) => `<div class="hx-trophy">${avOf(c.champ.oid)}<div><b>${c.season}</b><span>${esc(c.champ.team)}</span><span class="hx-tr-h">${esc(handle(c.champ.oid))}</span></div></div>`).join("");
 
   const seasonCards = H.summaries.map((s) => {
-    const row = (icon, label, t, val) => t ? `<div class="hx-row"><span class="hx-ic">${icon}</span><span class="hx-lbl">${label}</span><span class="hx-who">${esc(t.team)}${val ? ` <span class="dim">${val}</span>` : ""}</span></div>` : "";
+    const row = (icon, label, t, val) => t ? `<div class="hx-row"><span class="hx-ic">${icon}</span><span class="hx-lbl">${label}</span><span class="hx-who">${tn(t)}${val ? ` <span class="dim">${val}</span>` : ""}</span></div>` : "";
     return `<article class="hx-season">
       <div class="hx-season-h"><b>${s.season}</b>${s.complete ? "" : `<span class="chip">In progress</span>`}</div>
       ${row("🏆", "Champion", s.champ)}
@@ -948,13 +953,13 @@ async function historyView() {
   const spikeRow = (x, i) => {
     const p = pl(x.pid);
     return `<li class="hx-spike ${i < 3 ? "top" : ""}"><span class="hx-rank">${i + 1}</span>
-      <div class="hx-main"><b>${esc(p.name)}</b> <span class="dim">${esc(p.pos)}</span><div class="dim">${esc(x.team)} · ${when(x)}</div></div>
+      <div class="hx-main"><b>${esc(p.name)}</b> <span class="dim">${esc(p.pos)}</span><div class="dim">${tn(x)} · ${when(x)}</div></div>
       <span class="hx-pts">${f2(x.pts)}</span></li>`;
   };
   const teamRow = (x, i) => `<li class="hx-spike ${i < 3 ? "top" : ""}"><span class="hx-rank">${i + 1}</span>${avOf(x.oid)}
       <div class="hx-main"><b>${esc(x.team)}</b><div class="dim">${esc(handle(x.oid))} · ${when(x)}</div></div><span class="hx-pts">${f2(x.pts)}</span></li>`;
   const gameRow = (g, i) => `<li class="hx-spike"><span class="hx-rank">${i + 1}</span>
-      <div class="hx-main"><b>${esc(g.win.team)}</b> ${f1(g.win.pts)} <span class="dim">def.</span> <b>${esc(g.lose.team)}</b> ${f1(g.lose.pts)}<div class="dim">${when(g)}</div></div>
+      <div class="hx-main">${tn(g.win, true)} ${f1(g.win.pts)} <span class="dim">def.</span> ${tn(g.lose, true)} ${f1(g.lose.pts)}<div class="dim">${when(g)}</div></div>
       <span class="hx-pts">${g.margin < 1 ? f2(g.margin) : f1(g.margin)}</span></li>`;
   const list = (title, sub, rows) => rows.length ? `<section class="hx-list card"><div class="hx-list-h"><b>${title}</b><span class="dim">${sub}</span></div><ol>${rows.join("")}</ol></section>` : "";
 
