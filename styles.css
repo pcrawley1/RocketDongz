@@ -498,3 +498,9 @@ th.zev-col { color: var(--purple); }
 .hx-trophy .hx-tr-h { font-size: 11px; opacity: .75; }
 .hx-main > b + .hx-handle { margin-right: 2px; }
 .hx-main .dim { white-space: normal; }
+.ww-mini-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 10px; }
+.ww-mini { background: var(--card); border-radius: var(--r); padding: 12px 14px; box-shadow: var(--shadow); }
+.ww-mini-h { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 14px; }
+.ww-mini-h b { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ww-mini-p { font-size: 14px; padding: 2px 0; }
+.ww-sum { margin: 0 4px 12px; }

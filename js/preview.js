@@ -1,12 +1,12 @@
 // Preview edition of the Gazette: from Wednesday on, the newsletter looks ahead to this week's
 // matchups. It covers the stakes (playoff math), who each manager is leaning on, injury sweats,
 // revenge games, rematches, and live scores once games kick off.
-import { scoreStats, NON_STARTING } from "./scoring.js?v=20261116112109";
-import { avatarUrl } from "./sleeper.js?v=20261116112109";
-import { personaFor } from "./personas.js?v=20261116112109";
-import { isChugLeague } from "./chugs.js?v=20261116112109";
-import { teamsThrough, standSort, winChance } from "./newsletter.js?v=20261116112109";
-import { esc, f1, rec, pairs, seeded, fill, leagueDisplay } from "./util.js?v=20261116112109";
+import { scoreStats, NON_STARTING } from "./scoring.js?v=20261117134439";
+import { avatarUrl } from "./sleeper.js?v=20261117134439";
+import { personaFor } from "./personas.js?v=20261117134439";
+import { isChugLeague } from "./chugs.js?v=20261117134439";
+import { teamsThrough, standSort, winChance } from "./newsletter.js?v=20261117134439";
+import { esc, f1, rec, pairs, seeded, fill, leagueDisplay } from "./util.js?v=20261117134439";
 
 const ord = (n) => n + (["th", "st", "nd", "rd"][((n % 100) - 20) % 10] || ["th", "st", "nd", "rd"][n % 100] || "th");
 
@@ -96,6 +96,12 @@ const L = {
     "{P} is coming off {last} for {X}. Can he do it again{vs}?",
     "{X}'s {P} just dropped {last}. Ride the hot hand{vs}.",
   ],
+  freshAdd: [
+    "{T} is throwing fresh pickup {P} ({pp} proj) straight into the lineup.",
+    "Brand-new {P} ({pp} proj) gets the start for {T}. No pressure.",
+    "{T} picked up {P} this week and is already starting him ({pp} proj). Trust issues? Never heard of them.",
+    "Day-one starter alert: {T} plugs in waiver add {P} ({pp} proj).",
+  ],
   rematch: [
     "Rematch of week {w}, when {Wn} won {s}.",
     "They met in week {w}: {Wn} won {s}. Revenge is on the menu.",
@@ -161,6 +167,9 @@ export function buildPreview(d) {
   const rankOf = new Map(standings.map((t, i) => [t.rosterId, i + 1]));
   const pp = (id) => (proj[id] ? scoreStats(proj[id].stats, sc) : 0);
   const rows = allWeeks[W] || [];
+  const ww = d.waivers?.rated || [];
+  const freshBy = new Map(); // roster -> Set(pid) added this week
+  for (const x of ww) for (const a of x.adds) (freshBy.get(x.rid) || freshBy.set(x.rid, new Set()).get(x.rid)).add(a.pid);
   const live = rows.some((r) => r.points > 0);
 
   const sideInfo = (r, opp) => {
@@ -180,7 +189,8 @@ export function buildPreview(d) {
       for (let w = 1; w < W; w++) if ((allWeeks[w] || []).find((x) => x.roster_id === opp.roster_id)?.players?.includes(id)) return true;
       return false;
     });
-    return { r, projTotal, leaning, sweats, revenge, live: r.points || 0 };
+    const fresh = starters.filter((id) => freshBy.get(r.roster_id)?.has(id)).sort((a, b) => pp(b) - pp(a));
+    return { r, projTotal, leaning, sweats, revenge, fresh, live: r.points || 0 };
   };
 
   const games = pairs(rows).filter((g) => g.length === 2).map(([a, b]) => {
@@ -265,6 +275,10 @@ export function buildPreview(d) {
         else if (s.last > 0 && s.last <= s.avg * 0.5) out.push(fill(pick(L.coldStar, key + "h"), { X, P, last, vs: vsOf(op) }));
       }
     }
+    for (const side of [g.a, g.b]) {
+      const id = side.fresh[0];
+      if (id && pp(id) > 0) out.push(fill(pick(L.freshAdd, key + "fa" + side.r.roster_id), { T: Bn(side.r.roster_id), P: `<b>${esc(pname(id))}</b>`, pp: f1(pp(id)) }));
+    }
     const m = lastMeeting(g.a.r.roster_id, g.b.r.roster_id);
     if (m) out.push(fill(pick(L.rematch, key + "r"), { w: m.w, Wn: Bn(m.winner), Ln: Bn(m.winner === g.a.r.roster_id ? g.b.r.roster_id : g.a.r.roster_id), s: m.s }));
     for (const side of [g.a, g.b]) {
@@ -285,8 +299,9 @@ export function buildPreview(d) {
   };
   const leanHtml = (s, right) => `<div class="${right ? "right" : ""}">
       <div class="lean-h">Counting on</div>
-      ${s.leaning.map((id) => `<div>${esc(pname(id))} <span class="dim">${esc(players[id]?.pos || "")} · ${f1(pp(id))}</span></div>`).join("")}
+      ${s.leaning.map((id) => `<div>${s.fresh.includes(id) ? "🆕 " : ""}${esc(pname(id))} <span class="dim">${esc(players[id]?.pos || "")} · ${f1(pp(id))}</span></div>`).join("")}
       ${s.revenge.map((id) => `<div>🔥 ${esc(pname(id))} <span class="dim">revenge game</span></div>`).join("")}
+      ${s.fresh.filter((id) => !s.leaning.includes(id)).map((id) => `<div>🆕 ${esc(pname(id))} <span class="dim">${esc(players[id]?.pos || "")} · ${f1(pp(id))} · just added</span></div>`).join("")}
       ${s.sweats.length ? `<div class="lean-h">Sweating</div>${s.sweats.map((x) => `<div>${x}</div>`).join("")}` : ""}
     </div>`;
 
@@ -314,6 +329,33 @@ export function buildPreview(d) {
       ${st ? `<span class="stake st-${st.key}">${st.label}</span>` : ""}</div>`;
   }).join("");
 
+  // Waiver wire report for this week's moves
+  let wwHtml = "", wwTldr = null;
+  if (ww.length) {
+    const faab = ww.reduce((t, x) => t + (x.bid || 0), 0);
+    const per = new Map();
+    for (const x of ww) per.set(x.rid, (per.get(x.rid) || 0) + 1);
+    const [busy, busyN] = [...per.entries()].sort((a, b) => b[1] - a[1])[0];
+    const topBid = [...ww].filter((x) => x.bid && x.best).sort((a, b) => b.bid - a.bid)[0];
+    const bestAdd = ww.flatMap((x) => x.adds.map((a) => ({ x, a }))).sort((p, q) => q.a.ppg - p.a.ppg)[0];
+    const quiet = now.filter((t) => !per.has(t.rosterId)).length;
+    // Most interesting moves first: big bids, then the best projected adds.
+    const ranked = [...ww].sort((p, q) => (q.bid || 0) - (p.bid || 0) || (q.best?.ppg || 0) - (p.best?.ppg || 0)).slice(0, 8);
+    const pm = (pid) => `<span class="dim">${esc(players[pid]?.pos || "")}${players[pid]?.team ? " · " + esc(players[pid].team) : ""}</span>`;
+    const moveCard = (x) => `<div class="ww-mini">
+      <div class="ww-mini-h">${av(x.rid)}<b>${esc(name(x.rid))}</b>${x.type === "waiver" ? `<span class="chip ww-claim">Waiver${x.bid != null ? ` · $${x.bid}` : ""}</span>` : `<span class="chip">Free agent</span>`}</div>
+      ${x.adds.map((a) => `<div class="ww-mini-p"><span class="ww-sign plus">+</span>${esc(pname(a.pid))} ${pm(a.pid)}${pp(a.pid) ? ` <span class="dim">· ${f1(pp(a.pid))} proj</span>` : ""}</div>`).join("")}
+      ${x.drops.map((dd) => `<div class="ww-mini-p"><span class="ww-sign minus">&minus;</span>${esc(pname(dd.pid))} ${pm(dd.pid)}</div>`).join("")}
+      <p class="quip">${d.waivers.quip(x)}</p></div>`;
+    wwTldr = topBid ? `🛒 Biggest claim: ${Bn(topBid.rid)} paid <b>$${topBid.bid}</b> for <b>${esc(pname(topBid.best.pid))}</b>`
+      : bestAdd ? `🛒 Best-looking add: <b>${esc(pname(bestAdd.a.pid))}</b> to ${Bn(bestAdd.x.rid)}` : null;
+    wwHtml = `<section class="nl-section"><h3>Waiver Wire Report</h3>
+      <p class="pv-story ww-sum"><b>${ww.length}</b> move${ww.length === 1 ? "" : "s"} this week${faab ? `, <b>$${faab}</b> of FAAB spent` : ""}. ${busyN > 1 ? `${Bn(busy)} was the busiest with <b>${busyN}</b>. ` : ""}${quiet ? `${quiet} team${quiet === 1 ? "" : "s"} didn't touch the wire${quiet >= 4 ? ". Bold confidence or total apathy" : ""}.` : "Every team made a move."}</p>
+      <div class="ww-mini-grid">${ranked.map(moveCard).join("")}</div>
+      ${ww.length > ranked.length ? `<p class="recap-link"><button type="button" class="upload-btn secondary" data-goto="waivers">🛒 See all ${ww.length} moves</button></p>` : ""}
+    </section>`;
+  }
+
   // TL;DR
   const gA = name(gotw.a.r.roster_id), gB = name(gotw.b.r.roster_id);
   const low = [...games.flatMap((g) => [g.a, g.b])].sort((x, y) => x.projTotal - y.projTotal)[0];
@@ -323,6 +365,7 @@ export function buildPreview(d) {
     !playoffs && desperate ? `🚨 <b>${desperate}</b> team${desperate === 1 ? " is" : "s are"} on the bubble or in must-win mode with <b>${left}</b> game${left === 1 ? "" : "s"} left` : null,
     lock.sp >= 15 ? `🔒 Lock: ${Bn(lock.a.projTotal >= lock.b.projTotal ? lock.a.r.roster_id : lock.b.r.roster_id)} by <b>${f1(lock.sp)}</b>` : null,
     coin !== gotw && coin.sp < 5 ? `🪙 Coin flip: ${Bn(coin.a.r.roster_id)} vs ${Bn(coin.b.r.roster_id)} (${f1(coin.sp)} apart)` : null,
+    wwTldr,
     isChugLeague(league) ? `🍺 Chug watch: ${Bn(low.r.roster_id)} is projected lowest (<b>${f1(low.projTotal)}</b>). Stretch that throat.` : `🗑️ Projected basement: ${Bn(low.r.roster_id)} at <b>${f1(low.projTotal)}</b>`,
   ].filter(Boolean);
 
@@ -338,6 +381,7 @@ export function buildPreview(d) {
     <section class="tldr"><div class="tldr-title">The 10-second version</div><ul>${tldr.map((x) => `<li>${x}</li>`).join("")}</ul></section>
     <section class="nl-section"><h3>Week ${W} Matchups</h3><div class="pv-grid">${ordered.map(card).join("")}</div>
       <p class="note">Projections use your league's scoring and current lineups. Win % is a rough estimate. "Counting on" = each team's top projected starters.</p></section>
+    ${wwHtml}
     ${picture ? `<section class="nl-section"><h3>Playoff Picture</h3><p class="dim pp-sub">Top ${P} make it · ${left} regular-season game${left === 1 ? "" : "s"} left including this week</p><div class="card pp-card">${picture}</div></section>` : ""}
     ${lastDone ? `<p class="recap-link"><button type="button" class="upload-btn secondary" data-recap="${lastDone}">📰 Read the Week ${lastDone} recap</button></p>` : ""}
   </div>`;

@@ -1,18 +1,18 @@
-import { sleeper, avatarUrl } from "./sleeper.js?v=20261116112109";
-import { buildTeams, computeAdvanced, sortStandings } from "./stats.js?v=20261116112109";
-import { scoreStats, NON_STARTING } from "./scoring.js?v=20261116112109";
-import { playerNews } from "./news.js?v=20261116112109";
-import { buildNewsletter } from "./newsletter.js?v=20261116112109";
-import { buildPreview } from "./preview.js?v=20261116112109";
-import { isChugLeague, listChugs, uploadChug, videoUrl, INTEGRITY_START_WEEK } from "./chugs.js?v=20261116112109";
-import { personaFor } from "./personas.js?v=20261116112109";
-import { loadTrades, gradeTrades, replacementLevels } from "./trades.js?v=20261116112109";
-import { loadMoves, rateMoves } from "./waivers.js?v=20261116112109";
-import { loadHistory, crunch } from "./history.js?v=20261116112109";
-import { waiverTalk } from "./waivertalk.js?v=20261116112109";
-import { preseasonFor } from "./preseason.js?v=20261116112109";
-import { seeded } from "./util.js?v=20261116112109";
-import { esc, f1, f2, pct, rec, signed, stripTags, pairs, leagueDisplay } from "./util.js?v=20261116112109";
+import { sleeper, avatarUrl } from "./sleeper.js?v=20261117134439";
+import { buildTeams, computeAdvanced, sortStandings } from "./stats.js?v=20261117134439";
+import { scoreStats, NON_STARTING } from "./scoring.js?v=20261117134439";
+import { playerNews } from "./news.js?v=20261117134439";
+import { buildNewsletter } from "./newsletter.js?v=20261117134439";
+import { buildPreview } from "./preview.js?v=20261117134439";
+import { isChugLeague, listChugs, uploadChug, videoUrl, INTEGRITY_START_WEEK } from "./chugs.js?v=20261117134439";
+import { personaFor } from "./personas.js?v=20261117134439";
+import { loadTrades, gradeTrades, replacementLevels } from "./trades.js?v=20261117134439";
+import { loadMoves, rateMoves } from "./waivers.js?v=20261117134439";
+import { loadHistory, crunch } from "./history.js?v=20261117134439";
+import { waiverTalk } from "./waivertalk.js?v=20261117134439";
+import { preseasonFor } from "./preseason.js?v=20261117134439";
+import { seeded } from "./util.js?v=20261117134439";
+import { esc, f1, f2, pct, rec, signed, stripTags, pairs, leagueDisplay } from "./util.js?v=20261117134439";
 
 const DEFAULT_USER = "PierceCrawley";
 const DEFAULT_LEAGUE = "Rocket Dongs"; // what first-time visitors to the bare URL see
@@ -214,11 +214,23 @@ async function newsletter() {
   loading("Stopping the presses…");
   const season = ctx.league.season;
   if (W === ctx.previewWeek) {
-    const [players, proj] = await Promise.all([sleeper.players().catch(() => ({})), sleeper.projections(season, W)]);
+    const [players, proj, ww] = await Promise.all([
+      sleeper.players().catch(() => ({})), sleeper.projections(season, W), waiverData().catch(() => null),
+    ]);
     if (!stillOn("newsletter", W)) return;
+    let waivers = null;
+    if (ww) {
+      const byRoster = new Map(ctx.teams.map((t) => [t.rosterId, t]));
+      const team = (rid) => byRoster.get(rid) || { team: `Team ${rid}`, owner: "", avatar: null };
+      const thisWeek = ww.rated.filter((x) => x.leg === W);
+      waivers = { rated: thisWeek, quip: waiverTalk({ rated: thisWeek, moves: ww.moves, team, players, nextProj: ww.projs[0], allWeeks: ctx.allWeeks, lastDone: ctx.lastDone }) };
+    }
     ui.main.innerHTML = buildPreview({
       league: ctx.league, teams: ctx.baseTeams, allWeeks: ctx.allWeeks, players, week: W, lastDone: ctx.lastDone, proj,
-      regEnd: (ctx.league.settings.playoff_week_start || 15) - 1,
+      regEnd: (ctx.league.settings.playoff_week_start || 15) - 1, waivers,
+    });
+    ui.main.querySelector("[data-goto]")?.addEventListener("click", (e) => {
+      document.querySelector(`.tab[data-tab="${e.currentTarget.dataset.goto}"]`)?.click(); window.scrollTo(0, 0);
     });
     ui.main.querySelector("[data-recap]")?.addEventListener("click", (e) => {
       ui.week.value = e.currentTarget.dataset.recap; ui.week.dispatchEvent(new Event("change")); window.scrollTo(0, 0);
@@ -787,44 +799,56 @@ async function tradesView() {
 
 // ---------- 🛒 waiver wire ----------
 let wwFilter = "all";
+// Waiver moves rated + supporting data. Shared by the Waivers tab and the newsletter preview; cached per league load.
+let wwCache = null;
+function waiverData() {
+  const key = `${ctx.league.league_id}-${ctx.lastDone}-${ctx.maxWeek}`;
+  if (wwCache?.key === key) return wwCache.p;
+  const p = (async () => {
+    const season = ctx.league.season;
+    const regEnd = (ctx.league.settings.playoff_week_start || 15) - 1;
+    const futureWeeks = [];
+    for (let w = ctx.lastDone + 1; w <= regEnd; w++) futureWeeks.push(w);
+    const [players, moves] = await Promise.all([sleeper.players().catch(() => ({})), loadMoves(ctx.league.league_id, ctx.maxWeek)]);
+    const dropLegs = moves.filter((m) => m.drops).map((m) => m.leg || 1);
+    const firstDrop = dropLegs.length ? Math.max(1, Math.min(...dropLegs)) : ctx.lastDone + 1;
+    const statWeeks = [];
+    for (let w = firstDrop; w <= ctx.lastDone; w++) statWeeks.push(w);
+    const [projs, stats] = await Promise.all([
+      Promise.all(futureWeeks.map((w) => sleeper.projections(season, w))),
+      Promise.all(statWeeks.map((w) => sleeper.stats(season, w))),
+    ]);
+    const replWeek = projs[0] || (await sleeper.projections(season, Math.max(1, ctx.lastDone)));
+    const sc = ctx.league.scoring_settings || {};
+    const posOf = (pid) => players[pid]?.pos || (isNaN(pid) ? "DEF" : "");
+    const ros = new Map();
+    for (const pid of new Set(moves.flatMap((m) => Object.keys(m.adds || {})))) {
+      let pts = 0, games = 0;
+      for (const p of projs) { const v = p[pid] ? scoreStats(p[pid].stats, sc) : 0; if (v > 0) { pts += v; games++; } }
+      ros.set(pid, { pts, games });
+    }
+    const statByWeek = new Map(statWeeks.map((w, i) => [w, stats[i]]));
+    const actual = (pid, w) => { const s = statByWeek.get(w)?.[pid]; return s ? scoreStats(s.stats, sc) : 0; };
+    const repl = replacementLevels(Object.entries(replWeek).map(([pid, p]) => [pid, scoreStats(p.stats, sc)]),
+      posOf, ctx.league.roster_positions, ctx.teams.length);
+    const rated = rateMoves(moves, ctx.allWeeks, ctx.lastDone, {
+      currentRosters: new Map(ctx.teams.map((t) => [t.rosterId, new Set(t.players)])), ros, actual, repl, posOf,
+    });
+    return { players, moves, rated, projs, regEnd };
+  })();
+  wwCache = { key, p };
+  p.catch(() => { if (wwCache?.p === p) wwCache = null; });
+  return p;
+}
+
 async function waiversView() {
   loading("Digging through the waiver wire…");
-  const season = ctx.league.season;
-  const regEnd = (ctx.league.settings.playoff_week_start || 15) - 1;
-  const futureWeeks = [];
-  for (let w = ctx.lastDone + 1; w <= regEnd; w++) futureWeeks.push(w);
-  const [players, moves] = await Promise.all([sleeper.players().catch(() => ({})), loadMoves(ctx.league.league_id, ctx.maxWeek)]);
+  const { players, moves, rated, projs, regEnd } = await waiverData();
   if (tab !== "waivers") return;
   if (!moves.length) {
     ui.main.innerHTML = header() + `<div class="trade-hero ww-hero"><div class="trade-title">🛒 Waiver Wire</div><p>Not a single waiver move this season. Either everyone drafted perfectly or nobody's paying attention. (It's the second one.)</p></div>`;
     return;
   }
-  const dropLegs = moves.filter((m) => m.drops).map((m) => m.leg || 1);
-  const firstDrop = dropLegs.length ? Math.max(1, Math.min(...dropLegs)) : ctx.lastDone + 1;
-  const statWeeks = [];
-  for (let w = firstDrop; w <= ctx.lastDone; w++) statWeeks.push(w);
-  const [projs, stats] = await Promise.all([
-    Promise.all(futureWeeks.map((w) => sleeper.projections(season, w))),
-    Promise.all(statWeeks.map((w) => sleeper.stats(season, w))),
-  ]);
-  const replWeek = projs[0] || (await sleeper.projections(season, Math.max(1, ctx.lastDone)));
-  if (tab !== "waivers") return;
-
-  const sc = ctx.league.scoring_settings || {};
-  const posOf = (pid) => players[pid]?.pos || (isNaN(pid) ? "DEF" : "");
-  const ros = new Map();
-  for (const pid of new Set(moves.flatMap((m) => Object.keys(m.adds || {})))) {
-    let pts = 0, games = 0;
-    for (const p of projs) { const v = p[pid] ? scoreStats(p[pid].stats, sc) : 0; if (v > 0) { pts += v; games++; } }
-    ros.set(pid, { pts, games });
-  }
-  const statByWeek = new Map(statWeeks.map((w, i) => [w, stats[i]]));
-  const actual = (pid, w) => { const s = statByWeek.get(w)?.[pid]; return s ? scoreStats(s.stats, sc) : 0; };
-  const repl = replacementLevels(Object.entries(replWeek).map(([pid, p]) => [pid, scoreStats(p.stats, sc)]),
-    posOf, ctx.league.roster_positions, ctx.teams.length);
-  const rated = rateMoves(moves, ctx.allWeeks, ctx.lastDone, {
-    currentRosters: new Map(ctx.teams.map((t) => [t.rosterId, new Set(t.players)])), ros, actual, repl, posOf,
-  });
 
   const byRoster = new Map(ctx.teams.map((t) => [t.rosterId, t]));
   const team = (rid) => byRoster.get(rid) || { team: `Team ${rid}`, owner: "", avatar: null };
