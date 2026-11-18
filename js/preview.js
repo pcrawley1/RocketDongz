@@ -1,12 +1,12 @@
 // Preview edition of the Gazette: from Wednesday on, the newsletter looks ahead to this week's
 // matchups. It covers the stakes (playoff math), who each manager is leaning on, injury sweats,
 // revenge games, rematches, and live scores once games kick off.
-import { scoreStats, NON_STARTING } from "./scoring.js?v=20261117134439";
-import { avatarUrl } from "./sleeper.js?v=20261117134439";
-import { personaFor } from "./personas.js?v=20261117134439";
-import { isChugLeague } from "./chugs.js?v=20261117134439";
-import { teamsThrough, standSort, winChance } from "./newsletter.js?v=20261117134439";
-import { esc, f1, rec, pairs, seeded, fill, leagueDisplay } from "./util.js?v=20261117134439";
+import { scoreStats, NON_STARTING } from "./scoring.js?v=20261118112854";
+import { avatarUrl } from "./sleeper.js?v=20261118112854";
+import { personaFor } from "./personas.js?v=20261118112854";
+import { isChugLeague } from "./chugs.js?v=20261118112854";
+import { teamsThrough, standSort, winChance } from "./newsletter.js?v=20261118112854";
+import { esc, f1, rec, pairs, seeded, fill, leagueDisplay } from "./util.js?v=20261118112854";
 
 const ord = (n) => n + (["th", "st", "nd", "rd"][((n % 100) - 20) % 10] || ["th", "st", "nd", "rd"][n % 100] || "th");
 

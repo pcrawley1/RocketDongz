@@ -1,18 +1,18 @@
-import { sleeper, avatarUrl } from "./sleeper.js?v=20261117134439";
-import { buildTeams, computeAdvanced, sortStandings } from "./stats.js?v=20261117134439";
-import { scoreStats, NON_STARTING } from "./scoring.js?v=20261117134439";
-import { playerNews } from "./news.js?v=20261117134439";
-import { buildNewsletter } from "./newsletter.js?v=20261117134439";
-import { buildPreview } from "./preview.js?v=20261117134439";
-import { isChugLeague, listChugs, uploadChug, videoUrl, INTEGRITY_START_WEEK } from "./chugs.js?v=20261117134439";
-import { personaFor } from "./personas.js?v=20261117134439";
-import { loadTrades, gradeTrades, replacementLevels } from "./trades.js?v=20261117134439";
-import { loadMoves, rateMoves } from "./waivers.js?v=20261117134439";
-import { loadHistory, crunch } from "./history.js?v=20261117134439";
-import { waiverTalk } from "./waivertalk.js?v=20261117134439";
-import { preseasonFor } from "./preseason.js?v=20261117134439";
-import { seeded } from "./util.js?v=20261117134439";
-import { esc, f1, f2, pct, rec, signed, stripTags, pairs, leagueDisplay } from "./util.js?v=20261117134439";
+import { sleeper, avatarUrl } from "./sleeper.js?v=20261118112854";
+import { buildTeams, computeAdvanced, sortStandings } from "./stats.js?v=20261118112854";
+import { scoreStats, NON_STARTING } from "./scoring.js?v=20261118112854";
+import { playerNews } from "./news.js?v=20261118112854";
+import { buildNewsletter } from "./newsletter.js?v=20261118112854";
+import { buildPreview } from "./preview.js?v=20261118112854";
+import { isChugLeague, listChugs, uploadChug, videoUrl, INTEGRITY_START_WEEK } from "./chugs.js?v=20261118112854";
+import { personaFor } from "./personas.js?v=20261118112854";
+import { loadTrades, gradeTrades, replacementLevels } from "./trades.js?v=20261118112854";
+import { loadMoves, rateMoves } from "./waivers.js?v=20261118112854";
+import { loadHistory, crunch } from "./history.js?v=20261118112854";
+import { waiverTalk } from "./waivertalk.js?v=20261118112854";
+import { preseasonFor } from "./preseason.js?v=20261118112854";
+import { seeded } from "./util.js?v=20261118112854";
+import { esc, f1, f2, pct, rec, signed, stripTags, pairs, leagueDisplay } from "./util.js?v=20261118112854";
 
 const DEFAULT_USER = "PierceCrawley";
 const DEFAULT_LEAGUE = "Rocket Dongs"; // what first-time visitors to the bare URL see
@@ -809,7 +809,7 @@ function waiverData() {
     const regEnd = (ctx.league.settings.playoff_week_start || 15) - 1;
     const futureWeeks = [];
     for (let w = ctx.lastDone + 1; w <= regEnd; w++) futureWeeks.push(w);
-    const [players, moves] = await Promise.all([sleeper.players().catch(() => ({})), loadMoves(ctx.league.league_id, ctx.maxWeek)]);
+    const [players, moves] = await Promise.all([sleeper.players().catch(() => ({})), loadMoves(ctx.league.league_id, ctx.maxWeek, ctx.league.season === ctx.state.league_season ? ctx.state.season_start_date : null)]);
     const dropLegs = moves.filter((m) => m.drops).map((m) => m.leg || 1);
     const firstDrop = dropLegs.length ? Math.max(1, Math.min(...dropLegs)) : ctx.lastDone + 1;
     const statWeeks = [];

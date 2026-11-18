@@ -2,8 +2,8 @@
 // has been passed around, who cut him, his best week, points wasted on the bench, injuries, age,
 // next opponent, FAAB price, and how the add compares with the drop. An honest verdict follows, and
 // no line repeats on the page.
-import { esc, f1, seeded, fill } from "./util.js?v=20261117134439";
-import { personaFor } from "./personas.js?v=20261117134439";
+import { esc, f1, seeded, fill } from "./util.js?v=20261118112854";
+import { personaFor } from "./personas.js?v=20261118112854";
 
 const V = {
   // verdicts by tier, honest first, mean second
@@ -304,7 +304,8 @@ export function waiverTalk({ rated, moves, team, players, nextProj, allWeeks, la
       a.games >= 3 && a.started >= a.pts * 0.95 && a.kept && { type: "workhorse", w: 4, t: () => fillP(F.workhorse, key, { P, T, g: a.games }) },
     ], key);
 
-    const verdictPool = a.cutFast ? null : early ? (good ? V.earlyGood : V.earlyBad) : V[a.tier];
+    const sidelined = early && ["Out", "IR", "Doubtful", "PUP", "Sus"].includes(p.injury);
+    const verdictPool = a.cutFast || sidelined ? null : early ? (good ? V.earlyGood : V.earlyBad) : V[a.tier];
     let out = fact?.text || fillP(PLAIN, key, { T, P }) || `${T} added ${P}.`;
     const verdict = verdictPool && fillP(verdictPool, key + "v", { T, P });
     if (verdict) out += " " + verdict;
