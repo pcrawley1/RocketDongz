@@ -2,7 +2,7 @@
 // rated honestly. A pickup is judged on points per game (what he's scored for that team plus
 // what he's projected for the rest of the regular season) vs a waiver-level player at his position.
 // A drop is judged on what the cut player has scored since leaving.
-import { sleeper } from "./sleeper.js?v=20261118112854";
+import { sleeper } from "./sleeper.js?v=20261119091849";
 
 /**
  * The NFL week a move actually affects, based on when it went through (not when it was submitted).

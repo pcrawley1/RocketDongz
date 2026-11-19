@@ -41,8 +41,8 @@ export const PERSONAS = {
     ],
     waiver: [
       "{N} picked up {P} just to have someone new to watch from the corner.",
-      "{N} brought {P} home. He'll be watching him score for other teams by Sunday.",
-      "{N} added {P}. Another guy for him to watch from the corner.",
+      "{N} brought {P} home. Give it a week and he'll be watching {P} score for someone else.",
+      "{N} added {P}. One more for him to watch from the corner.",
       "{P} to {N}. Somewhere, Adam22 nods approvingly.",
     ],
     chug: [

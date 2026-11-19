@@ -31,6 +31,9 @@ export function seeded(seedStr) {
   };
 }
 export const pick = (arr, seed) => arr[Math.floor(seeded(seed)() * arr.length)];
+/** Team defenses aren't a "him": swap player pronouns in a template for "it" (keeps singular verbs working). */
+const IT = { he: "it", He: "It", him: "it", his: "its", His: "Its", himself: "itself", guy: "unit" };
+export const itify = (tpl, isDef) => (isDef && tpl ? tpl.replace(/\b(he|He|him|his|His|himself|guy)\b/g, (w) => IT[w]) : tpl);
 export const fill = (tpl, vars) => tpl.replace(/\{(\w+)\}/g, (_, k) => (k in vars ? vars[k] : `{${k}}`));
 
 /** Short display name + emoji for a league (e.g. "Studs and Spuds FFL" → 🥔 "Studs and Spuds"). */

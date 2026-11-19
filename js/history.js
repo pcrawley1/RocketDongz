@@ -1,7 +1,7 @@
 // League history: every season back to the league's first (via previous_league_id).
 // Completed seasons are cached permanently in IndexedDB, so they only download once per browser.
-import { sleeper, archive } from "./sleeper.js?v=20261118112854";
-import { pairs } from "./util.js?v=20261118112854";
+import { sleeper, archive } from "./sleeper.js?v=20261119091849";
+import { pairs } from "./util.js?v=20261119091849";
 
 const VERSION = "hist-v1";
 

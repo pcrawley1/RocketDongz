@@ -2,8 +2,8 @@
 // has been passed around, who cut him, his best week, points wasted on the bench, injuries, age,
 // next opponent, FAAB price, and how the add compares with the drop. An honest verdict follows, and
 // no line repeats on the page.
-import { esc, f1, seeded, fill } from "./util.js?v=20261118112854";
-import { personaFor } from "./personas.js?v=20261118112854";
+import { esc, f1, seeded, fill, itify } from "./util.js?v=20261119091849";
+import { personaFor } from "./personas.js?v=20261119091849";
 
 const V = {
   // verdicts by tier, honest first, mean second
@@ -221,7 +221,9 @@ export function waiverTalk({ rated, moves, team, players, nextProj, allWeeks, la
     }
     return null; // pool exhausted: caller tries another angle instead of repeating
   };
-  const fillP = (arr, key, vars) => { const l = pick(arr, key); return l == null ? null : fill(l, vars); };
+  let def = false; // is the player the line is about a team defense? (pronouns become "it")
+  const fillP = (arr, key, vars) => { const l = pick(arr, key); return l == null ? null : fill(itify(l, def), vars); };
+  const isDef = (pid) => players[pid]?.pos === "DEF";
   const name = (rid) => `<b>${esc(team(rid).team)}</b>`;
   const pn = (pid) => `<b>${esc(players[pid]?.name || pid)}</b>`;
   const addsOf = new Map(); // pid -> moves (oldest first) that added him
@@ -257,6 +259,7 @@ export function waiverTalk({ rated, moves, team, players, nextProj, allWeeks, la
       const d = x.drops[0];
       if (!d) return "";
       const Dn = pn(d.pid);
+      def = isDef(d.pid);
       const inj = players[d.pid]?.injury;
       const n = weeksOn(d.pid, x.rid, x.leg);
       const f = choose([
@@ -282,9 +285,10 @@ export function waiverTalk({ rated, moves, team, players, nextProj, allWeeks, la
     const drop = x.drops[0];
     const isCurrent = x.leg > lastDone;
 
+    def = p.pos === "DEF";
     const persona = personaFor(team(x.rid).owner);
     const fact = choose([
-      persona?.waiver?.length && { type: "persona", w: 5, t: () => fillP(persona.waiver, key, { N: `<b>${esc(persona.nick)}</b>`, P }) },
+      persona?.waiver?.length && { type: "persona", w: 5, t: () => { const l = pick(persona.waiver, key); return l == null ? null : fill(l, { N: `<b>${esc(persona.nick)}</b>`, P }); } },
       a.cutFast && { type: "cutFast", w: 8, t: () => fillP(F.cutFast, key, { P, T }) },
       nth >= 3 && { type: "rental", w: 6 + nth, t: () => fillP(F.rental, key, { P, n: nth, nth: ord(nth) }) },
       prior && { type: "recycled", w: 6, t: () => fillP(good ? F.recycledGood : F.recycledBad, key, { P, T, X: name(prior.roster_ids[0]), w: prior.leg }) },
@@ -309,6 +313,7 @@ export function waiverTalk({ rated, moves, team, players, nextProj, allWeeks, la
     let out = fact?.text || fillP(PLAIN, key, { T, P }) || `${T} added ${P}.`;
     const verdict = verdictPool && fillP(verdictPool, key + "v", { T, P });
     if (verdict) out += " " + verdict;
+    def = regret && isDef(regret.pid);
     const rl = regret && fact?.type !== "swapLoss" && fillP(D.regret, key + "r", { D: pn(regret.pid), X: `<b>${f1(regret.since)}</b>`, O: O(regret) });
     if (rl) out += " " + rl;
     return out;

@@ -1,12 +1,12 @@
 // Preview edition of the Gazette: from Wednesday on, the newsletter looks ahead to this week's
 // matchups. It covers the stakes (playoff math), who each manager is leaning on, injury sweats,
 // revenge games, rematches, and live scores once games kick off.
-import { scoreStats, NON_STARTING } from "./scoring.js?v=20261118112854";
-import { avatarUrl } from "./sleeper.js?v=20261118112854";
-import { personaFor } from "./personas.js?v=20261118112854";
-import { isChugLeague } from "./chugs.js?v=20261118112854";
-import { teamsThrough, standSort, winChance } from "./newsletter.js?v=20261118112854";
-import { esc, f1, rec, pairs, seeded, fill, leagueDisplay } from "./util.js?v=20261118112854";
+import { scoreStats, NON_STARTING } from "./scoring.js?v=20261119091849";
+import { avatarUrl } from "./sleeper.js?v=20261119091849";
+import { personaFor } from "./personas.js?v=20261119091849";
+import { isChugLeague } from "./chugs.js?v=20261119091849";
+import { teamsThrough, standSort, winChance } from "./newsletter.js?v=20261119091849";
+import { esc, f1, rec, pairs, seeded, fill, itify, leagueDisplay } from "./util.js?v=20261119091849";
 
 const ord = (n) => n + (["th", "st", "nd", "rd"][((n % 100) - 20) % 10] || ["th", "st", "nd", "rd"][n % 100] || "th");
 
@@ -262,7 +262,7 @@ export function buildPreview(d) {
     const pid = star.leaning[0];
     if (pid) {
       const P = `<b>${esc(pname(pid))}</b>`;
-      out.push(fill(pick(star === dog ? L.needBoom : L.favNeed, key + "n"), { D, F, P, stat: statOf(pid), vs: vsOf(pid) }).replace(/\s+(?=[.,?])/g, "").replace(/ {2,}/g, " "));
+      out.push(fill(itify(pick(star === dog ? L.needBoom : L.favNeed, key + "n"), players[pid]?.pos === "DEF"), { D, F, P, stat: statOf(pid), vs: vsOf(pid) }).replace(/\s+(?=[.,?])/g, "").replace(/ {2,}/g, " "));
     }
     // A hot or cold star on the other side (based on last week vs his average).
     const other = star === g.a ? g.b : g.a;
@@ -271,13 +271,13 @@ export function buildPreview(d) {
       const s = seasonOf(op);
       if (s.last != null && s.g >= 3) {
         const X = Bn(other.r.roster_id), P = `<b>${esc(pname(op))}</b>`, last = `<b>${f1(s.last)}</b>`;
-        if (s.last >= s.avg * 1.5 && s.last >= 20) out.push(fill(pick(L.hotStar, key + "h"), { X, P, last, vs: vsOf(op) }));
-        else if (s.last > 0 && s.last <= s.avg * 0.5) out.push(fill(pick(L.coldStar, key + "h"), { X, P, last, vs: vsOf(op) }));
+        if (s.last >= s.avg * 1.5 && s.last >= 20) out.push(fill(itify(pick(L.hotStar, key + "h"), players[op]?.pos === "DEF"), { X, P, last, vs: vsOf(op) }));
+        else if (s.last > 0 && s.last <= s.avg * 0.5) out.push(fill(itify(pick(L.coldStar, key + "h"), players[op]?.pos === "DEF"), { X, P, last, vs: vsOf(op) }));
       }
     }
     for (const side of [g.a, g.b]) {
       const id = side.fresh[0];
-      if (id && pp(id) > 0) out.push(fill(pick(L.freshAdd, key + "fa" + side.r.roster_id), { T: Bn(side.r.roster_id), P: `<b>${esc(pname(id))}</b>`, pp: f1(pp(id)) }));
+      if (id && pp(id) > 0) out.push(fill(itify(pick(L.freshAdd, key + "fa" + side.r.roster_id), players[id]?.pos === "DEF"), { T: Bn(side.r.roster_id), P: `<b>${esc(pname(id))}</b>`, pp: f1(pp(id)) }));
     }
     const m = lastMeeting(g.a.r.roster_id, g.b.r.roster_id);
     if (m) out.push(fill(pick(L.rematch, key + "r"), { w: m.w, Wn: Bn(m.winner), Ln: Bn(m.winner === g.a.r.roster_id ? g.b.r.roster_id : g.a.r.roster_id), s: m.s }));
